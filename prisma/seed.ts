@@ -140,6 +140,14 @@ async function main() {
 
   for (const [i, a] of sampleAssets.entries()) {
     const key = `sample/${slugify(a.title)}`;
+    // Idempoten: lewati jika asset dengan judul ini sudah ada (aman di-seed berulang).
+    const existing = await db.asset.findFirst({
+      where: { title: a.title, contributorId: contributor.id },
+    });
+    if (existing) {
+      console.log(`  • Asset #${i + 1} sudah ada, dilewati: ${a.title}`);
+      continue;
+    }
     const asset = await db.asset.create({
       data: {
         contributorId: contributor.id,
