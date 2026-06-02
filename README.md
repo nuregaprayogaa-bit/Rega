@@ -7,13 +7,21 @@
 | Fase | Fitur | Status |
 | ---- | ----- | ------ |
 | 0 | Setup proyek (Next.js, Tailwind, shadcn/ui, Prisma, i18n) | ✅ Selesai |
-| 1 | Auth & peran (email/password + Google, role-based dashboard) | ⏳ Berikutnya |
-| 2 | Upload kontributor (presigned upload, thumbnail + watermark) | ⏳ |
-| 3 | Moderasi admin (approve/reject) | ⏳ |
-| 4 | Katalog & pencarian publik | ⏳ |
-| 5 | Cart & checkout (Midtrans Snap + webhook) | ⏳ |
-| 6 | Akses pasca-beli (presigned download, invoice) | ⏳ |
-| 7 | Dashboard kontributor (statistik + earning ledger) | ⏳ |
+| 1 | Auth & peran (email/password + Google, role-based dashboard) | ✅ Selesai |
+| 2 | Upload kontributor (presigned upload, thumbnail + watermark) | ✅ Selesai |
+| 3 | Moderasi admin (approve/reject + alasan) | ✅ Selesai |
+| 4 | Katalog & pencarian publik (filter tipe/kategori, detail asset) | ✅ Selesai |
+| 5 | Cart & checkout (Midtrans Snap + webhook) | ✅ Selesai |
+| 6 | Akses pasca-beli (presigned download, riwayat order + invoice) | ✅ Selesai |
+| 7 | Dashboard kontributor (statistik + earning ledger) | ✅ Selesai |
+
+## 🧪 Mode Demo (tanpa kredensial eksternal)
+
+Aplikasi tetap **bisa dipakai end-to-end walau R2/S3 & Midtrans belum diisi**:
+
+- **Storage belum dikonfigurasi** → gambar katalog memakai placeholder; upload menyimpan metadata saja (file tidak benar-benar terunggah); unduhan memberi gambar placeholder. Isi `S3_*` untuk upload/preview/watermark nyata.
+- **Midtrans belum dikonfigurasi** → checkout berjalan dalam **mode simulasi**: order langsung dianggap LUNAS, hak unduh & earning ledger tetap terbentuk. Isi `MIDTRANS_*` untuk pembayaran nyata (QRIS/VA/e-wallet/kartu).
+- **Google OAuth** opsional — login email/password tetap jalan tanpa `AUTH_GOOGLE_*`.
 
 ## 🧱 Tech Stack
 
