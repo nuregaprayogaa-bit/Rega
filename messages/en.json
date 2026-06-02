@@ -1,0 +1,35 @@
+{
+  "common": {
+    "appName": "Nusagraf",
+    "tagline": "Stock photos & videos by Indonesian creators",
+    "search": "Search photos or videos...",
+    "login": "Sign in",
+    "register": "Sign up",
+    "logout": "Sign out",
+    "loading": "Loading...",
+    "cart": "Cart",
+    "buy": "Buy",
+    "download": "Download",
+    "price": "Price",
+    "ppn": "VAT",
+    "total": "Total"
+  },
+  "nav": {
+    "explore": "Explore",
+    "categories": "Categories",
+    "sell": "Sell",
+    "myDownloads": "My Downloads",
+    "dashboard": "Dashboard"
+  },
+  "home": {
+    "heroTitle": "Discover authentic Indonesian visuals",
+    "heroSubtitle": "Thousands of licensed stock photos & videos from local creators. Culinary, tourism, SMEs, and more.",
+    "cta": "Start Exploring",
+    "becomeContributor": "Become a Contributor"
+  },
+  "roles": {
+    "buyer": "Buyer",
+    "contributor": "Contributor",
+    "admin": "Admin"
+  }
+}

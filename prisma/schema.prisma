@@ -1,0 +1,289 @@
+// Nusagraf — Prisma schema
+// Marketplace foto & video stok untuk pasar Indonesia.
+// Catatan uang: semua nominal IDR disimpan sebagai INTEGER rupiah (tanpa desimal).
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ============================================================
+// ENUMS
+// ============================================================
+
+enum Role {
+  BUYER
+  CONTRIBUTOR
+  ADMIN
+}
+
+enum AssetType {
+  PHOTO
+  VIDEO
+}
+
+enum AssetStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum LicenseType {
+  STANDARD
+  EXTENDED
+}
+
+enum OrderStatus {
+  PENDING
+  PAID
+  FAILED
+  EXPIRED
+  CANCELLED
+}
+
+// Flag konten sensitif untuk tinjauan manual moderator.
+enum SensitiveFlag {
+  SARA
+  POLITIK
+  DEWASA
+}
+
+// ============================================================
+// AUTH.JS (NextAuth) — User, Account, Session, VerificationToken
+// ============================================================
+
+model User {
+  id            String    @id @default(cuid())
+  role          Role      @default(BUYER)
+  name          String?
+  email         String    @unique
+  emailVerified DateTime?
+  image         String?
+  passwordHash  String? // null untuk akun OAuth-only
+  payoutInfo    Json? // info rekening/e-wallet kontributor (payout fase lanjutan)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  accounts  Account[]
+  sessions  Session[]
+  assets    Asset[]         @relation("ContributorAssets")
+  orders    Order[]
+  downloads Download[]
+  earnings  EarningLedger[]
+  reviewed  Asset[]         @relation("ModeratedAssets")
+
+  @@index([role])
+}
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+  @@index([userId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model VerificationToken {
+  identifier String
+  token      String
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
+
+// ============================================================
+// KATALOG — Asset, Tag, Category, License, Price
+// ============================================================
+
+model Asset {
+  id              String      @id @default(cuid())
+  contributorId   String
+  contributor     User        @relation("ContributorAssets", fields: [contributorId], references: [id], onDelete: Cascade)
+  type            AssetType
+  title           String
+  description     String?
+  status          AssetStatus @default(PENDING)
+  rejectionReason String?
+  sensitiveFlags  SensitiveFlag[]
+
+  // File keys di object storage — JANGAN PERNAH diekspos ke client.
+  originalFileKey    String // file asli resolusi penuh (akses hanya pasca-beli)
+  previewFileKey     String? // preview (gambar resolusi rendah / clip video)
+  watermarkedFileKey String? // versi ber-watermark untuk tampilan publik
+
+  width       Int?
+  height      Int?
+  durationSec Int? // hanya untuk VIDEO
+
+  categoryId String?
+  category   Category? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+
+  // Moderasi
+  reviewedById String?
+  reviewedBy   User?     @relation("ModeratedAssets", fields: [reviewedById], references: [id], onDelete: SetNull)
+  reviewedAt   DateTime?
+
+  tags    AssetTag[]
+  prices  Price[]
+  items   OrderItem[]
+  downloads Download[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([status])
+  @@index([type])
+  @@index([contributorId])
+  @@index([categoryId])
+}
+
+model Tag {
+  id     String     @id @default(cuid())
+  name   String     @unique
+  slug   String     @unique
+  assets AssetTag[]
+}
+
+model AssetTag {
+  assetId String
+  tagId   String
+  asset   Asset  @relation(fields: [assetId], references: [id], onDelete: Cascade)
+  tag     Tag    @relation(fields: [tagId], references: [id], onDelete: Cascade)
+
+  @@id([assetId, tagId])
+  @@index([tagId])
+}
+
+model Category {
+  id     String  @id @default(cuid())
+  name   String
+  slug   String  @unique
+  assets Asset[]
+}
+
+model License {
+  type            LicenseType @id
+  name            String
+  description     String
+  priceMultiplier Decimal     @default(1.0) @db.Decimal(6, 2)
+}
+
+model Price {
+  id          String      @id @default(cuid())
+  assetId     String
+  asset       Asset       @relation(fields: [assetId], references: [id], onDelete: Cascade)
+  licenseType LicenseType
+  amountIDR   Int // rupiah penuh, integer
+
+  @@unique([assetId, licenseType])
+  @@index([assetId])
+}
+
+// ============================================================
+// TRANSAKSI — Order, OrderItem, Download, EarningLedger
+// ============================================================
+
+model Order {
+  id         String      @id @default(cuid())
+  buyerId    String
+  buyer      User        @relation(fields: [buyerId], references: [id], onDelete: Cascade)
+  status     OrderStatus @default(PENDING)
+  subtotal   Int // total harga sebelum PPN (rupiah)
+  ppnAmount  Int // nilai PPN (rupiah)
+  total      Int // subtotal + ppn (rupiah)
+  ppnPercent Decimal     @default(11) @db.Decimal(5, 2) // snapshot tarif PPN saat order
+
+  // Pembayaran (Midtrans)
+  paymentRef    String? // order_id / transaction_id Midtrans
+  snapToken     String?
+  paymentMethod String?
+  paidAt        DateTime?
+
+  items OrderItem[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([buyerId])
+  @@index([status])
+}
+
+model OrderItem {
+  id              String      @id @default(cuid())
+  orderId         String
+  order           Order       @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  assetId         String
+  asset           Asset       @relation(fields: [assetId], references: [id], onDelete: Restrict)
+  licenseType     LicenseType
+  priceAtPurchase Int // snapshot harga (rupiah)
+
+  earning EarningLedger?
+
+  @@unique([orderId, assetId, licenseType])
+  @@index([assetId])
+}
+
+model Download {
+  id           String   @id @default(cuid())
+  userId       String
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  assetId      String
+  asset        Asset    @relation(fields: [assetId], references: [id], onDelete: Cascade)
+  orderId      String
+  downloadedAt DateTime @default(now())
+
+  @@index([userId])
+  @@index([assetId])
+}
+
+model EarningLedger {
+  id            String   @id @default(cuid())
+  contributorId String
+  contributor   User     @relation(fields: [contributorId], references: [id], onDelete: Cascade)
+  orderItemId   String   @unique
+  orderItem     OrderItem @relation(fields: [orderItemId], references: [id], onDelete: Cascade)
+  grossAmount   Int // harga jual item (rupiah, sebelum PPN)
+  platformFee   Int // potongan platform (rupiah)
+  netEarning    Int // earning bersih kontributor (rupiah)
+  feePercent    Decimal  @db.Decimal(5, 2) // snapshot persentase fee
+  createdAt     DateTime @default(now())
+
+  @@index([contributorId])
+}
+
+// ============================================================
+// KONFIGURASI — nilai bisnis yang bisa diubah tanpa deploy
+// (PPN_PERCENT, PLATFORM_FEE_PERCENT, DOWNLOAD_URL_TTL_SECONDS, dll)
+// ============================================================
+
+model AppConfig {
+  key       String   @id
+  value     String
+  updatedAt DateTime @updatedAt
+}
