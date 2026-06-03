@@ -54,13 +54,12 @@ export async function openDispute(
       },
     });
     if (!order) return { ok: false, error: "Order tidak ditemukan." };
-    if (
-      ![
-        OrderStatus.IN_PROGRESS,
-        OrderStatus.DELIVERED,
-        OrderStatus.REVISION_REQUESTED,
-      ].includes(order.status)
-    ) {
+    const disputable: OrderStatus[] = [
+      OrderStatus.IN_PROGRESS,
+      OrderStatus.DELIVERED,
+      OrderStatus.REVISION_REQUESTED,
+    ];
+    if (!disputable.includes(order.status)) {
       return { ok: false, error: "Order ini tidak bisa disengketakan." };
     }
     await tx.dispute.upsert({

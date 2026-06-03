@@ -1,40 +1,56 @@
 import Link from "next/link";
-import { Camera } from "lucide-react";
+import { Sparkles } from "lucide-react";
 
 import { getCurrentUser } from "@/server/auth-helpers";
 import { APP_NAME } from "@/lib/constants";
 import { Button } from "@/components/ui/button";
 import { SearchBar } from "@/components/layout/search-bar";
 import { UserMenu } from "@/components/layout/user-menu";
-import { CartButton } from "@/components/cart/cart-button";
 
 export async function SiteHeader() {
   const user = await getCurrentUser();
+  const isFreelancer = user?.role === "FREELANCER" || user?.role === "ADMIN";
 
   return (
-    <header className="sticky top-0 z-40 border-b bg-background/95 backdrop-blur">
+    <header className="sticky top-0 z-40 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80">
       <div className="container flex h-16 items-center gap-4">
-        <Link href="/" className="flex shrink-0 items-center gap-2 font-bold">
-          <Camera className="h-6 w-6 text-primary" />
+        <Link href="/" className="flex shrink-0 items-center gap-2 text-lg font-bold">
+          <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary text-primary-foreground">
+            <Sparkles className="h-5 w-5" />
+          </span>
           <span className="hidden sm:inline">{APP_NAME}</span>
         </Link>
 
-        <SearchBar className="mx-auto hidden w-full max-w-md md:block" />
+        <SearchBar className="mx-auto hidden w-full max-w-lg md:block" />
 
-        <nav className="flex shrink-0 items-center gap-2">
+        <nav className="flex shrink-0 items-center gap-1 sm:gap-2">
           <Button variant="ghost" size="sm" asChild className="hidden lg:inline-flex">
-            <Link href="/search">Jelajahi</Link>
+            <Link href="/search">Jelajahi Jasa</Link>
           </Button>
-          <CartButton />
+
           {user ? (
-            <UserMenu
-              name={user.name ?? null}
-              email={user.email ?? null}
-              image={user.image ?? null}
-              role={user.role}
-            />
+            <>
+              {isFreelancer ? (
+                <Button variant="outline" size="sm" asChild className="hidden sm:inline-flex">
+                  <Link href="/sell">Dashboard Freelancer</Link>
+                </Button>
+              ) : (
+                <Button variant="ghost" size="sm" asChild className="hidden sm:inline-flex">
+                  <Link href="/register?role=freelancer">Jadi Freelancer</Link>
+                </Button>
+              )}
+              <UserMenu
+                name={user.name ?? null}
+                email={user.email ?? null}
+                image={user.image ?? null}
+                role={user.role}
+              />
+            </>
           ) : (
             <>
+              <Button variant="ghost" size="sm" asChild className="hidden sm:inline-flex">
+                <Link href="/register?role=freelancer">Jadi Freelancer</Link>
+              </Button>
               <Button variant="ghost" size="sm" asChild>
                 <Link href="/login">Masuk</Link>
               </Button>

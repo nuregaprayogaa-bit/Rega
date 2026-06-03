@@ -22,7 +22,7 @@ export function SearchBar({ className }: { className?: string }) {
         <Input
           name="q"
           defaultValue={params.get("q") ?? ""}
-          placeholder="Cari foto atau video..."
+          placeholder="Cari jasa, mis. desain logo, penerjemah..."
           className="pl-9"
         />
       </div>

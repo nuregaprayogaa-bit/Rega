@@ -1,16 +1,25 @@
 import { NextResponse } from "next/server";
 import { randomUUID } from "crypto";
+import { z } from "zod";
 
 import { getCurrentUser } from "@/server/auth-helpers";
-import { getUploadUrl, isStorageConfigured } from "@/server/adapters/storage/s3";
-import { presignSchema } from "@/lib/validations/asset";
+import {
+  getUploadUrl,
+  getPublicUrl,
+  isStorageConfigured,
+} from "@/server/adapters/storage/s3";
 import { slugify } from "@/lib/slug";
 
-// Memberi presigned URL untuk upload langsung ke object storage.
-// Hanya kontributor/admin. Jika storage belum dikonfigurasi -> mode demo.
+const presignSchema = z.object({
+  filename: z.string().min(1).max(200),
+  contentType: z.string().min(1).max(100),
+});
+
+// Memberi presigned URL untuk upload gambar (thumbnail/galeri/avatar) ke object storage.
+// Hanya pengguna login. Jika storage belum dikonfigurasi -> mode demo (pakai URL gambar manual).
 export async function POST(req: Request) {
   const user = await getCurrentUser();
-  if (!user || (user.role !== "CONTRIBUTOR" && user.role !== "ADMIN")) {
+  if (!user) {
     return NextResponse.json({ error: "Tidak diizinkan" }, { status: 403 });
   }
 
@@ -20,17 +29,21 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Data tidak valid" }, { status: 400 });
   }
 
-  const { filename, contentType, type } = parsed.data;
+  const { filename, contentType } = parsed.data;
   const ext = filename.includes(".") ? filename.split(".").pop() : "bin";
-  const key = `uploads/${user.id}/${type.toLowerCase()}/${randomUUID()}-${slugify(
+  const key = `uploads/${user.id}/${randomUUID()}-${slugify(
     filename.replace(/\.[^/.]+$/, ""),
   )}.${ext}`;
 
   if (!isStorageConfigured()) {
-    // Mode demo: tidak ada storage. Client tetap dapat key placeholder.
-    return NextResponse.json({ configured: false, key, uploadUrl: null });
+    return NextResponse.json({ configured: false, key, uploadUrl: null, publicUrl: null });
   }
 
   const uploadUrl = await getUploadUrl(key, contentType);
-  return NextResponse.json({ configured: true, key, uploadUrl });
+  return NextResponse.json({
+    configured: true,
+    key,
+    uploadUrl,
+    publicUrl: getPublicUrl(key),
+  });
 }

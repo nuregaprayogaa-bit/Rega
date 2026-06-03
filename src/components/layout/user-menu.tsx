@@ -2,15 +2,18 @@
 
 import Link from "next/link";
 import { useTransition } from "react";
-import { LogOut, LayoutDashboard, Upload, ShieldCheck, Download } from "lucide-react";
+import {
+  LogOut,
+  LayoutDashboard,
+  ShoppingBag,
+  Store,
+  ShieldCheck,
+  Wallet,
+} from "lucide-react";
 import type { Role } from "@prisma/client";
 
 import { logoutAction } from "@/app/actions/session";
-import {
-  Avatar,
-  AvatarFallback,
-  AvatarImage,
-} from "@/components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -30,6 +33,7 @@ type Props = {
 export function UserMenu({ name, email, image, role }: Props) {
   const [, startTransition] = useTransition();
   const initials = (name ?? email ?? "U").slice(0, 2).toUpperCase();
+  const isFreelancer = role === "FREELANCER" || role === "ADMIN";
 
   return (
     <DropdownMenu>
@@ -43,9 +47,7 @@ export function UserMenu({ name, email, image, role }: Props) {
         <DropdownMenuLabel>
           <div className="flex flex-col">
             <span className="font-medium">{name ?? "Pengguna"}</span>
-            <span className="text-xs font-normal text-muted-foreground">
-              {email}
-            </span>
+            <span className="text-xs font-normal text-muted-foreground">{email}</span>
           </div>
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
@@ -55,16 +57,24 @@ export function UserMenu({ name, email, image, role }: Props) {
           </Link>
         </DropdownMenuItem>
         <DropdownMenuItem asChild>
-          <Link href="/downloads">
-            <Download /> Unduhan Saya
+          <Link href="/orders">
+            <ShoppingBag /> Pesanan Saya
           </Link>
         </DropdownMenuItem>
-        {(role === "CONTRIBUTOR" || role === "ADMIN") && (
-          <DropdownMenuItem asChild>
-            <Link href="/contributor/upload">
-              <Upload /> Unggah Karya
-            </Link>
-          </DropdownMenuItem>
+        {isFreelancer && (
+          <>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem asChild>
+              <Link href="/sell">
+                <Store /> Kelola Jasa
+              </Link>
+            </DropdownMenuItem>
+            <DropdownMenuItem asChild>
+              <Link href="/sell/wallet">
+                <Wallet /> Dompet
+              </Link>
+            </DropdownMenuItem>
+          </>
         )}
         {role === "ADMIN" && (
           <DropdownMenuItem asChild>
