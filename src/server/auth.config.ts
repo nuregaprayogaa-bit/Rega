@@ -5,14 +5,13 @@ import { Role } from "@prisma/client";
 // TIDAK boleh meng-import Prisma, bcrypt, atau modul khusus Node di sini.
 
 // Awalan route yang butuh login + peran tertentu.
+const ALL = [Role.CLIENT, Role.FREELANCER, Role.ADMIN];
 const ROUTE_GUARDS: { prefix: string; roles: Role[] }[] = [
   { prefix: "/admin", roles: [Role.ADMIN] },
-  { prefix: "/contributor", roles: [Role.CONTRIBUTOR, Role.ADMIN] },
-  { prefix: "/dashboard", roles: [Role.BUYER, Role.CONTRIBUTOR, Role.ADMIN] },
-  { prefix: "/cart", roles: [Role.BUYER, Role.CONTRIBUTOR, Role.ADMIN] },
-  { prefix: "/checkout", roles: [Role.BUYER, Role.CONTRIBUTOR, Role.ADMIN] },
-  { prefix: "/downloads", roles: [Role.BUYER, Role.CONTRIBUTOR, Role.ADMIN] },
-  { prefix: "/orders", roles: [Role.BUYER, Role.CONTRIBUTOR, Role.ADMIN] },
+  { prefix: "/sell", roles: [Role.FREELANCER, Role.ADMIN] }, // area freelancer (gig, order masuk, dompet)
+  { prefix: "/dashboard", roles: ALL },
+  { prefix: "/checkout", roles: ALL },
+  { prefix: "/orders", roles: ALL },
 ];
 
 export const authConfig = {

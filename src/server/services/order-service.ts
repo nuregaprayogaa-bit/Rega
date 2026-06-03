@@ -1,14 +1,67 @@
 import "server-only";
-import { AssetStatus, OrderStatus, type LicenseType } from "@prisma/client";
+import {
+  GigStatus,
+  OrderStatus,
+  type PackageTier,
+  type Prisma,
+} from "@prisma/client";
 
 import { db } from "@/server/db";
-import { calcPPN, splitEarning } from "@/lib/money";
-import { getPpnPercent, getPlatformFeePercent } from "@/server/services/config";
+import { computeOrderAmounts } from "@/lib/money";
+import {
+  getBuyerServiceFeePercent,
+  getPlatformFeePercent,
+  getAutoAcceptDays,
+} from "@/server/services/config";
 import {
   getPaymentProvider,
   isPaymentConfigured,
 } from "@/server/adapters/payment";
-import { checkoutSchema, type CheckoutInput } from "@/lib/validations/order";
+import { recomputeFreelancerStats } from "@/server/services/profile-service";
+import {
+  ledgerCapture,
+  ledgerRelease,
+  ledgerRefund,
+  walletAccount,
+} from "@/server/services/ledger-service";
+import {
+  checkoutSchema,
+  deliverySchema,
+  revisionSchema,
+  type CheckoutInput,
+  type DeliveryInput,
+  type RevisionInput,
+} from "@/lib/validations/order";
+
+// ============================================================
+// STATE MACHINE — transisi yang diizinkan (divalidasi server-side)
+// ============================================================
+const TRANSITIONS: Record<OrderStatus, OrderStatus[]> = {
+  PENDING_PAYMENT: [OrderStatus.IN_PROGRESS, OrderStatus.CANCELLED],
+  IN_PROGRESS: [OrderStatus.DELIVERED, OrderStatus.CANCELLED, OrderStatus.DISPUTED],
+  DELIVERED: [
+    OrderStatus.COMPLETED,
+    OrderStatus.REVISION_REQUESTED,
+    OrderStatus.DISPUTED,
+  ],
+  REVISION_REQUESTED: [
+    OrderStatus.DELIVERED,
+    OrderStatus.CANCELLED,
+    OrderStatus.DISPUTED,
+  ],
+  COMPLETED: [],
+  CANCELLED: [],
+  DISPUTED: [OrderStatus.COMPLETED, OrderStatus.CANCELLED],
+};
+
+export function canTransition(from: OrderStatus, to: OrderStatus): boolean {
+  return TRANSITIONS[from]?.includes(to) ?? false;
+}
+
+function generateOrderCode(): string {
+  const rand = Math.random().toString(36).slice(2, 8).toUpperCase();
+  return `RGA-${rand}`;
+}
 
 export type CheckoutResult =
   | {
@@ -21,117 +74,79 @@ export type CheckoutResult =
   | { ok: false; error: string };
 
 /**
- * Buat Order dari item keranjang. Harga SELALU diambil ulang dari DB
- * (tidak pernah percaya angka dari client). PPN dihitung terpisah.
+ * Buat order dari sebuah paket gig. Harga SELALU diambil ulang dari DB
+ * (tidak pernah percaya angka dari client). Membuat order PENDING_PAYMENT,
+ * lalu memulai pembayaran (atau langsung lunas di mode simulasi).
  */
 export async function createCheckout(
-  buyer: { id: string; name?: string | null; email?: string | null },
+  client: { id: string; name?: string | null; email?: string | null },
   input: CheckoutInput,
 ): Promise<CheckoutResult> {
   const parsed = checkoutSchema.safeParse(input);
   if (!parsed.success) {
     return { ok: false, error: parsed.error.issues[0]?.message ?? "Data tidak valid" };
   }
+  const { gigId, tier, requirements } = parsed.data;
 
-  // Dedupe (assetId + licenseType).
-  const unique = new Map<string, { assetId: string; licenseType: LicenseType }>();
-  for (const it of parsed.data.items) {
-    unique.set(`${it.assetId}:${it.licenseType}`, {
-      assetId: it.assetId,
-      licenseType: it.licenseType as LicenseType,
-    });
-  }
-  const items = [...unique.values()];
-
-  // Ambil asset + harga dari DB.
-  const assetIds = [...new Set(items.map((i) => i.assetId))];
-  const assets = await db.asset.findMany({
-    where: { id: { in: assetIds }, status: AssetStatus.APPROVED },
+  const gig = await db.gig.findFirst({
+    where: { id: gigId, status: GigStatus.ACTIVE },
     select: {
       id: true,
-      title: true,
-      contributorId: true,
-      prices: { select: { licenseType: true, amountIDR: true } },
+      freelancerId: true,
+      packages: { where: { tier: tier as PackageTier } },
     },
   });
-  const assetMap = new Map(assets.map((a) => [a.id, a]));
-
-  const lineItems: {
-    assetId: string;
-    title: string;
-    licenseType: LicenseType;
-    price: number;
-  }[] = [];
-
-  for (const it of items) {
-    const asset = assetMap.get(it.assetId);
-    if (!asset) {
-      return { ok: false, error: "Beberapa karya tidak tersedia lagi." };
-    }
-    const price = asset.prices.find((p) => p.licenseType === it.licenseType);
-    if (!price) {
-      return { ok: false, error: "Harga lisensi tidak ditemukan." };
-    }
-    lineItems.push({
-      assetId: asset.id,
-      title: asset.title,
-      licenseType: it.licenseType,
-      price: price.amountIDR,
-    });
+  if (!gig) return { ok: false, error: "Jasa tidak tersedia." };
+  if (gig.freelancerId === client.id) {
+    return { ok: false, error: "Anda tidak bisa memesan jasa milik sendiri." };
   }
+  const pkg = gig.packages[0];
+  if (!pkg) return { ok: false, error: "Paket tidak ditemukan." };
 
-  const subtotal = lineItems.reduce((s, i) => s + i.price, 0);
-  const ppnPercent = await getPpnPercent();
-  const ppnAmount = calcPPN(subtotal, ppnPercent);
-  const total = subtotal + ppnAmount;
+  const buyerFeePercent = await getBuyerServiceFeePercent();
+  const commissionPercent = await getPlatformFeePercent();
+  const amounts = computeOrderAmounts({
+    packagePrice: pkg.priceIDR,
+    buyerFeePercent,
+    commissionPercent,
+  });
 
-  // Buat order PENDING.
   const order = await db.order.create({
     data: {
-      buyerId: buyer.id,
-      status: OrderStatus.PENDING,
-      subtotal,
-      ppnAmount,
-      total,
-      ppnPercent,
-      items: {
-        create: lineItems.map((i) => ({
-          assetId: i.assetId,
-          licenseType: i.licenseType,
-          priceAtPurchase: i.price,
-        })),
-      },
+      code: generateOrderCode(),
+      clientId: client.id,
+      freelancerId: gig.freelancerId,
+      gigId: gig.id,
+      packageId: pkg.id,
+      packageTier: pkg.tier,
+      status: OrderStatus.PENDING_PAYMENT,
+      packagePriceIDR: amounts.packagePriceIDR,
+      serviceFeeIDR: amounts.serviceFeeIDR,
+      totalIDR: amounts.totalIDR,
+      commissionIDR: amounts.commissionIDR,
+      freelancerNetIDR: amounts.freelancerNetIDR,
+      revisionsAllowed: pkg.revisions,
+      requirements: requirements || null,
+      conversation: { create: {} },
     },
-    select: { id: true },
+    select: { id: true, totalIDR: true },
   });
 
   // Mode simulasi (tanpa konfigurasi Midtrans) -> langsung lunas.
   if (!isPaymentConfigured()) {
     await markOrderPaid(order.id, "SIMULASI", `sim_${order.id}`);
-    return {
-      ok: true,
-      orderId: order.id,
-      simulated: true,
-      snapToken: null,
-      redirectUrl: null,
-    };
+    return { ok: true, orderId: order.id, simulated: true, snapToken: null, redirectUrl: null };
   }
 
-  // Buat transaksi Midtrans Snap.
   try {
     const provider = getPaymentProvider();
     const tx = await provider.createTransaction({
       orderId: order.id,
-      grossAmount: total,
-      customer: { name: buyer.name, email: buyer.email },
+      grossAmount: order.totalIDR,
+      customer: { name: client.name, email: client.email },
       items: [
-        ...lineItems.map((i) => ({
-          id: `${i.assetId}-${i.licenseType}`,
-          name: `${i.title} (${i.licenseType})`,
-          price: i.price,
-          quantity: 1,
-        })),
-        { id: "ppn", name: `PPN ${ppnPercent}%`, price: ppnAmount, quantity: 1 },
+        { id: pkg.id, name: `Paket ${pkg.tier}`, price: amounts.packagePriceIDR, quantity: 1 },
+        { id: "fee", name: "Biaya layanan", price: amounts.serviceFeeIDR, quantity: 1 },
       ],
     });
     await db.order.update({
@@ -152,89 +167,273 @@ export async function createCheckout(
 }
 
 /**
- * Tandai order LUNAS (idempoten). Membuat Download + EarningLedger.
- * Dipanggil dari webhook Midtrans atau dari mode simulasi.
+ * Tandai order LUNAS -> escrow (IDEMPOTEN). Dipanggil webhook Midtrans / simulasi.
+ * Atomic: ubah status, tahan dana di escrow (ledger), tambah saldo pending freelancer.
  */
 export async function markOrderPaid(
   orderId: string,
   paymentMethod: string,
   ref: string,
 ): Promise<void> {
-  const feePercent = await getPlatformFeePercent();
+  const autoAcceptDays = await getAutoAcceptDays();
 
   await db.$transaction(async (tx) => {
-    const order = await tx.order.findUnique({
-      where: { id: orderId },
-      include: { items: true },
-    });
+    const order = await tx.order.findUnique({ where: { id: orderId } });
     if (!order) return;
-    if (order.status === OrderStatus.PAID) return; // idempoten
+    if (order.status !== OrderStatus.PENDING_PAYMENT) return; // idempoten
+
+    const dueAt = new Date();
+    dueAt.setDate(dueAt.getDate() + 14); // tenggat longgar; tampilan saja
 
     await tx.order.update({
       where: { id: orderId },
       data: {
-        status: OrderStatus.PAID,
+        status: OrderStatus.IN_PROGRESS,
         paidAt: new Date(),
         paymentMethod,
         paymentRef: ref,
+        dueAt,
       },
     });
 
-    const asset = await tx.asset.findMany({
-      where: { id: { in: order.items.map((i) => i.assetId) } },
-      select: { id: true, contributorId: true },
+    // Tahan dana di escrow + catat earning tertahan freelancer.
+    await ledgerCapture(tx, { id: order.id, totalIDR: order.totalIDR });
+    await tx.walletAccount.upsert({
+      where: { userId: order.freelancerId },
+      create: { userId: order.freelancerId, pendingIDR: order.freelancerNetIDR },
+      update: { pendingIDR: { increment: order.freelancerNetIDR } },
     });
-    const contributorByAsset = new Map(asset.map((a) => [a.id, a.contributorId]));
+  });
 
-    for (const item of order.items) {
-      // Hak unduh.
-      await tx.download.create({
-        data: {
-          userId: order.buyerId,
-          assetId: item.assetId,
-          orderId: order.id,
-        },
-      });
-      // Ledger earning kontributor.
-      const contributorId = contributorByAsset.get(item.assetId);
-      if (contributorId) {
-        const gross = item.priceAtPurchase;
-        const { platformFee, netEarning } = splitEarning(gross, feePercent);
-        await tx.earningLedger.create({
-          data: {
-            contributorId,
-            orderItemId: item.id,
-            grossAmount: gross,
-            platformFee,
-            netEarning,
-            feePercent,
-          },
-        });
-      }
+  // autoAcceptDays dipakai nanti saat DELIVERED; disimpan di config (tidak di sini).
+  void autoAcceptDays;
+}
+
+/** Freelancer mengirim hasil kerja: IN_PROGRESS/REVISION -> DELIVERED. */
+export async function submitDelivery(
+  freelancerId: string,
+  input: DeliveryInput,
+): Promise<{ ok: boolean; error?: string }> {
+  const parsed = deliverySchema.safeParse(input);
+  if (!parsed.success) {
+    return { ok: false, error: parsed.error.issues[0]?.message ?? "Data tidak valid" };
+  }
+  const autoAcceptDays = await getAutoAcceptDays();
+
+  return db.$transaction(async (tx) => {
+    const order = await tx.order.findFirst({
+      where: { id: parsed.data.orderId, freelancerId },
+    });
+    if (!order) return { ok: false, error: "Order tidak ditemukan." };
+    if (
+      order.status !== OrderStatus.IN_PROGRESS &&
+      order.status !== OrderStatus.REVISION_REQUESTED
+    ) {
+      return { ok: false, error: "Order tidak dalam status pengerjaan." };
     }
+
+    const autoAcceptAt = new Date();
+    autoAcceptAt.setDate(autoAcceptAt.getDate() + autoAcceptDays);
+
+    await tx.delivery.create({
+      data: {
+        orderId: order.id,
+        message: parsed.data.message,
+        files: parsed.data.files,
+      },
+    });
+    await tx.order.update({
+      where: { id: order.id },
+      data: {
+        status: OrderStatus.DELIVERED,
+        deliveredAt: new Date(),
+        autoAcceptAt,
+      },
+    });
+    return { ok: true };
   });
 }
 
-export async function markOrderStatus(orderId: string, status: OrderStatus) {
-  await db.order.updateMany({
-    where: { id: orderId, status: OrderStatus.PENDING },
-    data: { status },
+/** Client menerima hasil: DELIVERED -> COMPLETED. Rilis dana dari escrow. */
+export async function acceptOrder(
+  clientId: string,
+  orderId: string,
+): Promise<{ ok: boolean; error?: string }> {
+  const result = await db.$transaction(async (tx) => {
+    const order = await tx.order.findFirst({ where: { id: orderId, clientId } });
+    if (!order) return { ok: false as const, error: "Order tidak ditemukan." };
+    if (order.status !== OrderStatus.DELIVERED) {
+      return { ok: false as const, error: "Order belum bisa diselesaikan." };
+    }
+    await releaseEscrow(tx, order);
+    return { ok: true as const, freelancerId: order.freelancerId };
   });
+
+  if (result.ok) await recomputeFreelancerStats(result.freelancerId);
+  return result;
 }
 
-export async function getOrderForBuyer(orderId: string, buyerId: string) {
-  return db.order.findFirst({
-    where: { id: orderId, buyerId },
-    include: {
-      items: { include: { asset: { select: { id: true, title: true, type: true } } } },
+/** Helper internal: lepas escrow -> saldo freelancer + pendapatan platform. */
+async function releaseEscrow(
+  tx: Prisma.TransactionClient,
+  order: {
+    id: string;
+    totalIDR: number;
+    freelancerNetIDR: number;
+    freelancerId: string;
+    gigId: string;
+  },
+): Promise<void> {
+  await tx.order.update({
+    where: { id: order.id },
+    data: { status: OrderStatus.COMPLETED, completedAt: new Date() },
+  });
+  await ledgerRelease(tx, order);
+  // Pindahkan earning dari pending -> available.
+  await tx.walletAccount.update({
+    where: { userId: order.freelancerId },
+    data: {
+      pendingIDR: { decrement: order.freelancerNetIDR },
+      availableIDR: { increment: order.freelancerNetIDR },
     },
   });
+  await tx.gig.update({
+    where: { id: order.gigId },
+    data: { ordersCount: { increment: 1 } },
+  });
 }
 
-export async function listOrders(buyerId: string) {
+/** Client minta revisi: DELIVERED -> REVISION_REQUESTED (cek kuota). */
+export async function requestRevision(
+  clientId: string,
+  input: RevisionInput,
+): Promise<{ ok: boolean; error?: string }> {
+  const parsed = revisionSchema.safeParse(input);
+  if (!parsed.success) {
+    return { ok: false, error: parsed.error.issues[0]?.message ?? "Data tidak valid" };
+  }
+
+  return db.$transaction(async (tx) => {
+    const order = await tx.order.findFirst({
+      where: { id: parsed.data.orderId, clientId },
+    });
+    if (!order) return { ok: false, error: "Order tidak ditemukan." };
+    if (order.status !== OrderStatus.DELIVERED) {
+      return { ok: false, error: "Revisi hanya bisa saat menunggu konfirmasi." };
+    }
+    if (order.revisionsUsed >= order.revisionsAllowed) {
+      return { ok: false, error: "Kuota revisi paket sudah habis." };
+    }
+
+    await tx.revisionRequest.create({
+      data: { orderId: order.id, message: parsed.data.message },
+    });
+    await tx.order.update({
+      where: { id: order.id },
+      data: {
+        status: OrderStatus.REVISION_REQUESTED,
+        revisionsUsed: { increment: 1 },
+        autoAcceptAt: null,
+      },
+    });
+    return { ok: true };
+  });
+}
+
+/** Batalkan order yang belum dibayar (oleh client). */
+export async function cancelUnpaidOrder(
+  clientId: string,
+  orderId: string,
+): Promise<{ ok: boolean; error?: string }> {
+  const res = await db.order.updateMany({
+    where: { id: orderId, clientId, status: OrderStatus.PENDING_PAYMENT },
+    data: { status: OrderStatus.CANCELLED, cancelledAt: new Date() },
+  });
+  if (res.count === 0) return { ok: false, error: "Order tidak bisa dibatalkan." };
+  return { ok: true };
+}
+
+/**
+ * Auto-accept order yang sudah DELIVERED melewati batas waktu (auto-accept).
+ * Dipanggil oleh cron/endpoint terjadwal. Aman dipanggil berulang.
+ */
+export async function autoAcceptDueOrders(): Promise<number> {
+  const due = await db.order.findMany({
+    where: { status: OrderStatus.DELIVERED, autoAcceptAt: { lte: new Date() } },
+    select: {
+      id: true,
+      totalIDR: true,
+      freelancerNetIDR: true,
+      freelancerId: true,
+      gigId: true,
+    },
+  });
+
+  let count = 0;
+  for (const order of due) {
+    await db.$transaction(async (tx) => {
+      const fresh = await tx.order.findUnique({
+        where: { id: order.id },
+        select: { status: true },
+      });
+      if (fresh?.status !== OrderStatus.DELIVERED) return;
+      await releaseEscrow(tx, order);
+      count += 1;
+    });
+    await recomputeFreelancerStats(order.freelancerId);
+  }
+  return count;
+}
+
+// ============================================================
+// QUERY
+// ============================================================
+
+const orderInclude = {
+  gig: { select: { id: true, title: true, slug: true, coverImage: true } },
+  package: true,
+  client: { select: { id: true, name: true, image: true, email: true } },
+  freelancer: { select: { id: true, name: true, image: true } },
+  deliveries: { orderBy: { createdAt: "asc" } },
+  revisionRequests: { orderBy: { createdAt: "asc" } },
+  review: true,
+  dispute: true,
+  conversation: {
+    include: {
+      messages: {
+        orderBy: { createdAt: "asc" },
+        include: { sender: { select: { id: true, name: true, image: true } } },
+      },
+    },
+  },
+} satisfies Prisma.OrderInclude;
+
+export async function getOrderForUser(orderId: string, userId: string) {
+  return db.order.findFirst({
+    where: { id: orderId, OR: [{ clientId: userId }, { freelancerId: userId }] },
+    include: orderInclude,
+  });
+}
+
+export async function listClientOrders(clientId: string) {
   return db.order.findMany({
-    where: { buyerId },
-    include: { items: true },
+    where: { clientId },
+    include: {
+      gig: { select: { title: true, slug: true, coverImage: true } },
+      freelancer: { select: { name: true, image: true } },
+      review: { select: { id: true } },
+    },
+    orderBy: { createdAt: "desc" },
+  });
+}
+
+export async function listFreelancerOrders(freelancerId: string) {
+  return db.order.findMany({
+    where: { freelancerId, status: { not: OrderStatus.PENDING_PAYMENT } },
+    include: {
+      gig: { select: { title: true, slug: true, coverImage: true } },
+      client: { select: { name: true, image: true } },
+    },
     orderBy: { createdAt: "desc" },
   });
 }

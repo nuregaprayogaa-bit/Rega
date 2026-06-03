@@ -1,11 +1,13 @@
 import { NextResponse } from "next/server";
-import { OrderStatus } from "@prisma/client";
 
 import { getPaymentProvider } from "@/server/adapters/payment";
-import { markOrderPaid, markOrderStatus } from "@/server/services/order-service";
+import { markOrderPaid } from "@/server/services/order-service";
+import { db } from "@/server/db";
+import { OrderStatus } from "@prisma/client";
 
 // Webhook notifikasi pembayaran Midtrans.
 // Midtrans memanggil endpoint ini saat status transaksi berubah.
+// Idempoten: markOrderPaid hanya memproses order PENDING_PAYMENT (aman dikirim ulang).
 export async function POST(req: Request) {
   let body: unknown;
   try {
@@ -27,13 +29,15 @@ export async function POST(req: Request) {
         );
         break;
       case "FAILED":
-        await markOrderStatus(result.orderId, OrderStatus.FAILED);
-        break;
       case "EXPIRED":
-        await markOrderStatus(result.orderId, OrderStatus.EXPIRED);
+        // Hanya batalkan jika belum dibayar.
+        await db.order.updateMany({
+          where: { id: result.orderId, status: OrderStatus.PENDING_PAYMENT },
+          data: { status: OrderStatus.CANCELLED, cancelledAt: new Date() },
+        });
         break;
       default:
-        // PENDING: biarkan order tetap PENDING.
+        // PENDING: biarkan order tetap menunggu pembayaran.
         break;
     }
 

@@ -1,6 +1,6 @@
-// Nusagraf — Prisma schema
-// Marketplace foto & video stok untuk pasar Indonesia.
-// Catatan uang: semua nominal IDR disimpan sebagai INTEGER rupiah (tanpa desimal).
+// Rega — Prisma schema
+// Marketplace jasa freelance multi-vendor untuk pasar Indonesia (referensi: Fastwork).
+// Catatan uang: SEMUA nominal IDR disimpan sebagai INTEGER rupiah (tanpa desimal/float).
 
 generator client {
   provider = "prisma-client-js"
@@ -16,40 +16,61 @@ datasource db {
 // ============================================================
 
 enum Role {
-  BUYER
-  CONTRIBUTOR
+  CLIENT
+  FREELANCER
   ADMIN
 }
 
-enum AssetType {
-  PHOTO
-  VIDEO
+enum GigStatus {
+  DRAFT
+  PENDING_REVIEW
+  ACTIVE
+  REJECTED
+  PAUSED
 }
 
-enum AssetStatus {
+enum PackageTier {
+  BASIC
+  STANDARD
+  PREMIUM
+}
+
+// State machine order. Transisi divalidasi di server (order-service).
+enum OrderStatus {
+  PENDING_PAYMENT // menunggu pembayaran client
+  IN_PROGRESS // dana di escrow, freelancer mengerjakan
+  DELIVERED // freelancer mengirim hasil, menunggu client
+  REVISION_REQUESTED // client minta revisi (kuota paket)
+  COMPLETED // client accept / auto-accept, dana rilis
+  CANCELLED // dibatalkan, dana dikembalikan
+  DISPUTED // sengketa, menunggu admin
+}
+
+enum FreelancerLevel {
+  NEW
+  LEVEL_1
+  LEVEL_2
+  TOP_RATED
+}
+
+// Arah entri buku besar (double-entry).
+enum LedgerDirection {
+  DEBIT
+  CREDIT
+}
+
+enum PayoutStatus {
   PENDING
   APPROVED
   REJECTED
-}
-
-enum LicenseType {
-  STANDARD
-  EXTENDED
-}
-
-enum OrderStatus {
-  PENDING
   PAID
-  FAILED
-  EXPIRED
-  CANCELLED
 }
 
-// Flag konten sensitif untuk tinjauan manual moderator.
-enum SensitiveFlag {
-  SARA
-  POLITIK
-  DEWASA
+enum DisputeStatus {
+  OPEN
+  RESOLVED_REFUND
+  RESOLVED_RELEASE
+  REJECTED
 }
 
 // ============================================================
@@ -58,23 +79,26 @@ enum SensitiveFlag {
 
 model User {
   id            String    @id @default(cuid())
-  role          Role      @default(BUYER)
+  role          Role      @default(CLIENT)
   name          String?
   email         String    @unique
   emailVerified DateTime?
   image         String?
   passwordHash  String? // null untuk akun OAuth-only
-  payoutInfo    Json? // info rekening/e-wallet kontributor (payout fase lanjutan)
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
 
-  accounts  Account[]
-  sessions  Session[]
-  assets    Asset[]         @relation("ContributorAssets")
-  orders    Order[]
-  downloads Download[]
-  earnings  EarningLedger[]
-  reviewed  Asset[]         @relation("ModeratedAssets")
+  accounts          Account[]
+  sessions          Session[]
+  freelancerProfile FreelancerProfile?
+  wallet            WalletAccount?
+  gigs              Gig[]
+  ordersAsClient    Order[]            @relation("ClientOrders")
+  ordersAsSeller    Order[]            @relation("FreelancerOrders")
+  reviewsWritten    Review[]           @relation("ReviewAuthor")
+  messages          Message[]
+  payoutRequests    PayoutRequest[]
+  disputesOpened    Dispute[]          @relation("DisputeOpener")
 
   @@index([role])
 }
@@ -118,168 +142,301 @@ model VerificationToken {
 }
 
 // ============================================================
-// KATALOG — Asset, Tag, Category, License, Price
+// FREELANCER — Profil, level, statistik
 // ============================================================
 
-model Asset {
-  id              String      @id @default(cuid())
-  contributorId   String
-  contributor     User        @relation("ContributorAssets", fields: [contributorId], references: [id], onDelete: Cascade)
-  type            AssetType
-  title           String
-  description     String?
-  status          AssetStatus @default(PENDING)
-  rejectionReason String?
-  sensitiveFlags  SensitiveFlag[]
+model FreelancerProfile {
+  id              String          @id @default(cuid())
+  userId          String          @unique
+  user            User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  headline        String? // mis. "Desainer Logo & Branding"
+  bio             String?
+  skills          String[] // daftar keahlian
+  location        String?
+  level           FreelancerLevel @default(NEW)
+  ratingAvg       Float           @default(0) // rata-rata rating (0-5)
+  ratingCount     Int             @default(0)
+  completedOrders Int             @default(0)
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+}
 
-  // File keys di object storage — JANGAN PERNAH diekspos ke client.
-  originalFileKey    String // file asli resolusi penuh (akses hanya pasca-beli)
-  previewFileKey     String? // preview (gambar resolusi rendah / clip video)
-  watermarkedFileKey String? // versi ber-watermark untuk tampilan publik
+// ============================================================
+// KATALOG — Category, Subcategory, Gig, ServicePackage
+// ============================================================
 
-  width       Int?
-  height      Int?
-  durationSec Int? // hanya untuk VIDEO
+model Category {
+  id            String        @id @default(cuid())
+  name          String
+  slug          String        @unique
+  icon          String? // nama ikon lucide (opsional)
+  subcategories Subcategory[]
+  gigs          Gig[]
+}
 
-  categoryId String?
-  category   Category? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+model Subcategory {
+  id         String   @id @default(cuid())
+  name       String
+  slug       String   @unique
+  categoryId String
+  category   Category @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  gigs       Gig[]
 
-  // Moderasi
-  reviewedById String?
-  reviewedBy   User?     @relation("ModeratedAssets", fields: [reviewedById], references: [id], onDelete: SetNull)
-  reviewedAt   DateTime?
-
-  tags    AssetTag[]
-  prices  Price[]
-  items   OrderItem[]
-  downloads Download[]
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  @@index([status])
-  @@index([type])
-  @@index([contributorId])
   @@index([categoryId])
 }
 
-model Tag {
-  id     String     @id @default(cuid())
-  name   String     @unique
-  slug   String     @unique
-  assets AssetTag[]
-}
+model Gig {
+  id            String       @id @default(cuid())
+  freelancerId  String
+  freelancer    User         @relation(fields: [freelancerId], references: [id], onDelete: Cascade)
+  categoryId    String?
+  category      Category?    @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  subcategoryId String?
+  subcategory   Subcategory? @relation(fields: [subcategoryId], references: [id], onDelete: SetNull)
 
-model AssetTag {
-  assetId String
-  tagId   String
-  asset   Asset  @relation(fields: [assetId], references: [id], onDelete: Cascade)
-  tag     Tag    @relation(fields: [tagId], references: [id], onDelete: Cascade)
+  title       String
+  slug        String    @unique
+  description String    @db.Text
+  coverImage  String? // URL gambar sampul
+  gallery     String[] // URL galeri/portfolio
+  status      GigStatus @default(PENDING_REVIEW)
 
-  @@id([assetId, tagId])
-  @@index([tagId])
-}
+  rejectionReason String?
 
-model Category {
-  id     String  @id @default(cuid())
-  name   String
-  slug   String  @unique
-  assets Asset[]
-}
+  // Statistik (denormalisasi untuk sorting & tampilan cepat)
+  ratingAvg   Float @default(0)
+  ratingCount Int   @default(0)
+  ordersCount Int   @default(0)
 
-model License {
-  type            LicenseType @id
-  name            String
-  description     String
-  priceMultiplier Decimal     @default(1.0) @db.Decimal(6, 2)
-}
-
-model Price {
-  id          String      @id @default(cuid())
-  assetId     String
-  asset       Asset       @relation(fields: [assetId], references: [id], onDelete: Cascade)
-  licenseType LicenseType
-  amountIDR   Int // rupiah penuh, integer
-
-  @@unique([assetId, licenseType])
-  @@index([assetId])
-}
-
-// ============================================================
-// TRANSAKSI — Order, OrderItem, Download, EarningLedger
-// ============================================================
-
-model Order {
-  id         String      @id @default(cuid())
-  buyerId    String
-  buyer      User        @relation(fields: [buyerId], references: [id], onDelete: Cascade)
-  status     OrderStatus @default(PENDING)
-  subtotal   Int // total harga sebelum PPN (rupiah)
-  ppnAmount  Int // nilai PPN (rupiah)
-  total      Int // subtotal + ppn (rupiah)
-  ppnPercent Decimal     @default(11) @db.Decimal(5, 2) // snapshot tarif PPN saat order
-
-  // Pembayaran (Midtrans)
-  paymentRef    String? // order_id / transaction_id Midtrans
-  snapToken     String?
-  paymentMethod String?
-  paidAt        DateTime?
-
-  items OrderItem[]
+  packages ServicePackage[]
+  orders   Order[]
+  reviews  Review[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  @@index([buyerId])
+  @@index([status])
+  @@index([freelancerId])
+  @@index([categoryId])
+}
+
+model ServicePackage {
+  id           String      @id @default(cuid())
+  gigId        String
+  gig          Gig         @relation(fields: [gigId], references: [id], onDelete: Cascade)
+  tier         PackageTier
+  title        String
+  description  String
+  priceIDR     Int // rupiah penuh (integer)
+  deliveryDays Int // estimasi hari pengerjaan
+  revisions    Int // jumlah revisi termasuk
+  deliverables String[] // daftar hasil yang didapat
+
+  orders Order[]
+
+  @@unique([gigId, tier])
+  @@index([gigId])
+}
+
+// ============================================================
+// TRANSAKSI — Order (escrow + state machine), Delivery, Revisi
+// ============================================================
+
+model Order {
+  id           String         @id @default(cuid())
+  code         String         @unique // kode order ramah-manusia, mis. RGA-XXXXXX
+  clientId     String
+  client       User           @relation("ClientOrders", fields: [clientId], references: [id], onDelete: Restrict)
+  freelancerId String
+  freelancer   User           @relation("FreelancerOrders", fields: [freelancerId], references: [id], onDelete: Restrict)
+  gigId        String
+  gig          Gig            @relation(fields: [gigId], references: [id], onDelete: Restrict)
+  packageId    String
+  package      ServicePackage @relation(fields: [packageId], references: [id], onDelete: Restrict)
+
+  status      OrderStatus @default(PENDING_PAYMENT)
+  packageTier PackageTier
+
+  // Snapshot keuangan saat order dibuat (integer rupiah).
+  packagePriceIDR  Int // harga paket (yang diterima dasar freelancer)
+  serviceFeeIDR    Int // biaya layanan client (di atas harga paket)
+  totalIDR         Int // packagePrice + serviceFee = yang dibayar client
+  commissionIDR    Int // komisi platform dari freelancer
+  freelancerNetIDR Int // packagePrice - commission = earning bersih freelancer
+
+  requirements    String? @db.Text // brief/kebutuhan dari client
+  revisionsAllowed Int    @default(0)
+  revisionsUsed    Int    @default(0)
+
+  // Pembayaran (Midtrans)
+  paymentRef    String?
+  snapToken     String?
+  paymentMethod String?
+
+  paidAt       DateTime?
+  deliveredAt  DateTime?
+  completedAt  DateTime?
+  cancelledAt  DateTime?
+  dueAt        DateTime? // tenggat pengerjaan freelancer
+  autoAcceptAt DateTime? // auto-accept jika client diam setelah DELIVERED
+
+  deliveries       Delivery[]
+  revisionRequests RevisionRequest[]
+  conversation     Conversation?
+  review           Review?
+  dispute          Dispute?
+  ledgerEntries    LedgerEntry[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([clientId])
+  @@index([freelancerId])
+  @@index([gigId])
   @@index([status])
 }
 
-model OrderItem {
-  id              String      @id @default(cuid())
-  orderId         String
-  order           Order       @relation(fields: [orderId], references: [id], onDelete: Cascade)
-  assetId         String
-  asset           Asset       @relation(fields: [assetId], references: [id], onDelete: Restrict)
-  licenseType     LicenseType
-  priceAtPurchase Int // snapshot harga (rupiah)
+model Delivery {
+  id        String   @id @default(cuid())
+  orderId   String
+  order     Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  message   String   @db.Text
+  files     String[] // URL file hasil
+  createdAt DateTime @default(now())
 
-  earning EarningLedger?
-
-  @@unique([orderId, assetId, licenseType])
-  @@index([assetId])
+  @@index([orderId])
 }
 
-model Download {
+model RevisionRequest {
+  id        String   @id @default(cuid())
+  orderId   String
+  order     Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  message   String   @db.Text
+  createdAt DateTime @default(now())
+
+  @@index([orderId])
+}
+
+// ============================================================
+// CHAT — Conversation & Message (per order)
+// ============================================================
+
+model Conversation {
+  id        String    @id @default(cuid())
+  orderId   String    @unique
+  order     Order     @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  messages  Message[]
+  createdAt DateTime  @default(now())
+}
+
+model Message {
+  id             String       @id @default(cuid())
+  conversationId String
+  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  senderId       String
+  sender         User         @relation(fields: [senderId], references: [id], onDelete: Cascade)
+  body           String       @db.Text
+  createdAt      DateTime     @default(now())
+
+  @@index([conversationId])
+}
+
+// ============================================================
+// REVIEW & RATING
+// ============================================================
+
+model Review {
+  id             String   @id @default(cuid())
+  orderId        String   @unique
+  order          Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  gigId          String
+  gig            Gig      @relation(fields: [gigId], references: [id], onDelete: Cascade)
+  freelancerId   String
+  clientId       String
+  client         User     @relation("ReviewAuthor", fields: [clientId], references: [id], onDelete: Cascade)
+  rating         Int // 1-5
+  comment        String?  @db.Text
+  freelancerReply String? @db.Text
+  createdAt      DateTime @default(now())
+
+  @@index([gigId])
+  @@index([freelancerId])
+}
+
+// ============================================================
+// DOMPET & BUKU BESAR — WalletAccount, LedgerEntry, PayoutRequest
+// ============================================================
+
+model WalletAccount {
   id           String   @id @default(cuid())
-  userId       String
+  userId       String   @unique
   user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  assetId      String
-  asset        Asset    @relation(fields: [assetId], references: [id], onDelete: Cascade)
-  orderId      String
-  downloadedAt DateTime @default(now())
+  availableIDR Int      @default(0) // saldo bisa ditarik
+  pendingIDR   Int      @default(0) // earning tertahan di escrow (order berjalan)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  payoutRequests PayoutRequest[]
+}
+
+// Buku besar IMMUTABLE & double-entry. Catatan TIDAK PERNAH diedit/dihapus —
+// koreksi selalu lewat entri baru. Setiap "event" keuangan menghasilkan beberapa
+// entri yang seimbang (total DEBIT == total CREDIT).
+model LedgerEntry {
+  id        String          @id @default(cuid())
+  account   String // mis. ESCROW, PLATFORM_REVENUE, wallet:<userId>, CLIENT_CASH
+  direction LedgerDirection
+  amountIDR Int // selalu positif; makna ditentukan oleh direction
+  orderId   String?
+  order     Order?          @relation(fields: [orderId], references: [id], onDelete: SetNull)
+  type      String // CAPTURE, RELEASE, REFUND, PAYOUT
+  // Kunci unik anti-duplikasi (idempotensi). Webhook yang dikirim ulang tidak
+  // akan membuat entri ganda karena unique constraint ini.
+  ref       String          @unique
+  createdAt DateTime        @default(now())
+
+  @@index([account])
+  @@index([orderId])
+}
+
+model PayoutRequest {
+  id          String        @id @default(cuid())
+  walletId    String
+  wallet      WalletAccount @relation(fields: [walletId], references: [id], onDelete: Cascade)
+  userId      String
+  user        User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  amountIDR   Int
+  status      PayoutStatus  @default(PENDING)
+  bankName    String?
+  accountName String?
+  accountNo   String?
+  note        String?
+  processedAt DateTime?
+  createdAt   DateTime      @default(now())
 
   @@index([userId])
-  @@index([assetId])
+  @@index([status])
 }
 
-model EarningLedger {
-  id            String   @id @default(cuid())
-  contributorId String
-  contributor   User     @relation(fields: [contributorId], references: [id], onDelete: Cascade)
-  orderItemId   String   @unique
-  orderItem     OrderItem @relation(fields: [orderItemId], references: [id], onDelete: Cascade)
-  grossAmount   Int // harga jual item (rupiah, sebelum PPN)
-  platformFee   Int // potongan platform (rupiah)
-  netEarning    Int // earning bersih kontributor (rupiah)
-  feePercent    Decimal  @db.Decimal(5, 2) // snapshot persentase fee
-  createdAt     DateTime @default(now())
+// ============================================================
+// SENGKETA
+// ============================================================
 
-  @@index([contributorId])
+model Dispute {
+  id         String        @id @default(cuid())
+  orderId    String        @unique
+  order      Order         @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  openedById String
+  openedBy   User          @relation("DisputeOpener", fields: [openedById], references: [id], onDelete: Cascade)
+  reason     String        @db.Text
+  status     DisputeStatus @default(OPEN)
+  resolution String?       @db.Text
+  createdAt  DateTime      @default(now())
+  resolvedAt DateTime?
 }
 
 // ============================================================
 // KONFIGURASI — nilai bisnis yang bisa diubah tanpa deploy
-// (PPN_PERCENT, PLATFORM_FEE_PERCENT, DOWNLOAD_URL_TTL_SECONDS, dll)
 // ============================================================
 
 model AppConfig {

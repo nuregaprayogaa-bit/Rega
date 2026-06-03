@@ -11,7 +11,8 @@ export const registerSchema = z
     email: z.string().email("Email tidak valid"),
     password: z.string().min(8, "Kata sandi minimal 8 karakter").max(72),
     confirmPassword: z.string(),
-    asContributor: z.boolean().default(false),
+    // Peran yang dipilih saat mendaftar.
+    role: z.enum(["CLIENT", "FREELANCER"]).default("CLIENT"),
   })
   .refine((data) => data.password === data.confirmPassword, {
     message: "Konfirmasi kata sandi tidak cocok",

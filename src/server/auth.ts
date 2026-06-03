@@ -50,7 +50,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     async jwt({ token, user }) {
       if (user) {
         // token.sub berisi user.id secara default.
-        token.role = (user.role as Role) ?? Role.BUYER;
+        token.role = (user.role as Role) ?? Role.CLIENT;
       } else if (!token.role && token.sub) {
         // OAuth sign-in: ambil role dari DB jika belum ada di token.
         const dbUser = await db.user.findUnique({
@@ -64,7 +64,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     async session({ session, token }) {
       if (session.user) {
         session.user.id = String(token.sub ?? "");
-        session.user.role = (token.role as Role) ?? Role.BUYER;
+        session.user.role = (token.role as Role) ?? Role.CLIENT;
       }
       return session;
     },

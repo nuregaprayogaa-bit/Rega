@@ -10,8 +10,8 @@ export type RegisterResult =
   | { ok: false; error: string };
 
 /**
- * Mendaftarkan user baru (email + password). Peran default BUYER,
- * atau CONTRIBUTOR jika mendaftar sebagai kontributor.
+ * Mendaftarkan user baru (email + password). Peran CLIENT atau FREELANCER.
+ * Freelancer otomatis dibuatkan profil & dompet kosong.
  */
 export async function registerUser(
   input: RegisterInput,
@@ -24,7 +24,7 @@ export async function registerUser(
     };
   }
 
-  const { name, email, password, asContributor } = parsed.data;
+  const { name, email, password, role } = parsed.data;
 
   const existing = await db.user.findUnique({ where: { email } });
   if (existing) {
@@ -32,15 +32,37 @@ export async function registerUser(
   }
 
   const passwordHash = await bcrypt.hash(password, 10);
+  const isFreelancer = role === "FREELANCER";
+
   const user = await db.user.create({
     data: {
       name,
       email,
       passwordHash,
-      role: asContributor ? Role.CONTRIBUTOR : Role.BUYER,
+      role: isFreelancer ? Role.FREELANCER : Role.CLIENT,
+      ...(isFreelancer
+        ? {
+            freelancerProfile: { create: {} },
+            wallet: { create: {} },
+          }
+        : {}),
     },
     select: { id: true },
   });
 
   return { ok: true, userId: user.id };
+}
+
+/** Pastikan freelancer punya profil & dompet (dipakai saat upgrade peran). */
+export async function ensureFreelancerSetup(userId: string): Promise<void> {
+  await db.freelancerProfile.upsert({
+    where: { userId },
+    create: { userId },
+    update: {},
+  });
+  await db.walletAccount.upsert({
+    where: { userId },
+    create: { userId },
+    update: {},
+  });
 }
