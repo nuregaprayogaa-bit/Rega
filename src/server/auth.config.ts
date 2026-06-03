@@ -1,14 +1,17 @@
 import type { NextAuthConfig } from "next-auth";
-import { Role } from "@prisma/client";
 
 // Konfigurasi yang AMAN untuk Edge runtime (dipakai middleware).
-// TIDAK boleh meng-import Prisma, bcrypt, atau modul khusus Node di sini.
+// TIDAK boleh meng-import Prisma, bcrypt, atau modul khusus Node di sini —
+// import @prisma/client akan membengkakkan bundle Edge (>1MB). Karena itu
+// peran ditulis sebagai literal string, bukan enum Role dari Prisma.
+
+type RoleName = "CLIENT" | "FREELANCER" | "ADMIN";
 
 // Awalan route yang butuh login + peran tertentu.
-const ALL = [Role.CLIENT, Role.FREELANCER, Role.ADMIN];
-const ROUTE_GUARDS: { prefix: string; roles: Role[] }[] = [
-  { prefix: "/admin", roles: [Role.ADMIN] },
-  { prefix: "/sell", roles: [Role.FREELANCER, Role.ADMIN] }, // area freelancer (gig, order masuk, dompet)
+const ALL: RoleName[] = ["CLIENT", "FREELANCER", "ADMIN"];
+const ROUTE_GUARDS: { prefix: string; roles: RoleName[] }[] = [
+  { prefix: "/admin", roles: ["ADMIN"] },
+  { prefix: "/sell", roles: ["FREELANCER", "ADMIN"] }, // area freelancer (gig, order masuk, dompet)
   { prefix: "/dashboard", roles: ALL },
   { prefix: "/checkout", roles: ALL },
   { prefix: "/orders", roles: ALL },
