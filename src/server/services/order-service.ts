@@ -18,6 +18,8 @@ import {
   isPaymentConfigured,
 } from "@/server/adapters/payment";
 import { recomputeFreelancerStats } from "@/server/services/profile-service";
+import { notify } from "@/server/services/notification-service";
+import { NotificationType } from "@prisma/client";
 import {
   ledgerCapture,
   ledgerRelease,
@@ -203,6 +205,22 @@ export async function markOrderPaid(
     });
   });
 
+  // Notifikasi ke freelancer: order baru masuk (best-effort, di luar transaksi).
+  const paid = await db.order.findUnique({
+    where: { id: orderId },
+    select: { id: true, code: true, freelancerId: true, status: true, gig: { select: { title: true } } },
+  });
+  if (paid && paid.status === OrderStatus.IN_PROGRESS) {
+    await notify({
+      userId: paid.freelancerId,
+      type: NotificationType.ORDER_NEW,
+      title: "Order baru masuk! 🎉",
+      body: `Pesanan #${paid.code} untuk "${paid.gig.title}" sudah dibayar. Ayo mulai dikerjakan.`,
+      link: `/orders/${paid.id}`,
+      email: true,
+    });
+  }
+
   // autoAcceptDays dipakai nanti saat DELIVERED; disimpan di config (tidak di sini).
   void autoAcceptDays;
 }
@@ -218,16 +236,17 @@ export async function submitDelivery(
   }
   const autoAcceptDays = await getAutoAcceptDays();
 
-  return db.$transaction(async (tx) => {
+  const result = await db.$transaction(async (tx) => {
     const order = await tx.order.findFirst({
       where: { id: parsed.data.orderId, freelancerId },
+      include: { gig: { select: { title: true } } },
     });
-    if (!order) return { ok: false, error: "Order tidak ditemukan." };
+    if (!order) return { ok: false as const, error: "Order tidak ditemukan." };
     if (
       order.status !== OrderStatus.IN_PROGRESS &&
       order.status !== OrderStatus.REVISION_REQUESTED
     ) {
-      return { ok: false, error: "Order tidak dalam status pengerjaan." };
+      return { ok: false as const, error: "Order tidak dalam status pengerjaan." };
     }
 
     const autoAcceptAt = new Date();
@@ -248,8 +267,20 @@ export async function submitDelivery(
         autoAcceptAt,
       },
     });
-    return { ok: true };
+    return { ok: true as const, clientId: order.clientId, code: order.code, title: order.gig.title, id: order.id };
   });
+
+  if (result.ok) {
+    await notify({
+      userId: result.clientId,
+      type: NotificationType.ORDER_DELIVERED,
+      title: "Hasil pekerjaan sudah dikirim 📦",
+      body: `Freelancer mengirim hasil untuk pesanan #${result.code} ("${result.title}"). Periksa & selesaikan jika sudah sesuai.`,
+      link: `/orders/${result.id}`,
+      email: true,
+    });
+  }
+  return result;
 }
 
 /** Client menerima hasil: DELIVERED -> COMPLETED. Rilis dana dari escrow. */
@@ -264,10 +295,20 @@ export async function acceptOrder(
       return { ok: false as const, error: "Order belum bisa diselesaikan." };
     }
     await releaseEscrow(tx, order);
-    return { ok: true as const, freelancerId: order.freelancerId };
+    return { ok: true as const, freelancerId: order.freelancerId, net: order.freelancerNetIDR };
   });
 
-  if (result.ok) await recomputeFreelancerStats(result.freelancerId);
+  if (result.ok) {
+    await recomputeFreelancerStats(result.freelancerId);
+    await notify({
+      userId: result.freelancerId,
+      type: NotificationType.ORDER_COMPLETED,
+      title: "Order selesai, dana cair! 💰",
+      body: "Client menerima hasil pekerjaanmu. Penghasilan sudah masuk ke saldo dompetmu.",
+      link: `/orders/${orderId}`,
+      email: true,
+    });
+  }
   return result;
 }
 
@@ -311,16 +352,16 @@ export async function requestRevision(
     return { ok: false, error: parsed.error.issues[0]?.message ?? "Data tidak valid" };
   }
 
-  return db.$transaction(async (tx) => {
+  const result = await db.$transaction(async (tx) => {
     const order = await tx.order.findFirst({
       where: { id: parsed.data.orderId, clientId },
     });
-    if (!order) return { ok: false, error: "Order tidak ditemukan." };
+    if (!order) return { ok: false as const, error: "Order tidak ditemukan." };
     if (order.status !== OrderStatus.DELIVERED) {
-      return { ok: false, error: "Revisi hanya bisa saat menunggu konfirmasi." };
+      return { ok: false as const, error: "Revisi hanya bisa saat menunggu konfirmasi." };
     }
     if (order.revisionsUsed >= order.revisionsAllowed) {
-      return { ok: false, error: "Kuota revisi paket sudah habis." };
+      return { ok: false as const, error: "Kuota revisi paket sudah habis." };
     }
 
     await tx.revisionRequest.create({
@@ -334,8 +375,20 @@ export async function requestRevision(
         autoAcceptAt: null,
       },
     });
-    return { ok: true };
+    return { ok: true as const, freelancerId: order.freelancerId, code: order.code, id: order.id };
   });
+
+  if (result.ok) {
+    await notify({
+      userId: result.freelancerId,
+      type: NotificationType.ORDER_REVISION,
+      title: "Permintaan revisi 🔁",
+      body: `Client meminta revisi untuk pesanan #${result.code}. Lihat detail & kirim hasil perbaikannya.`,
+      link: `/orders/${result.id}`,
+      email: true,
+    });
+  }
+  return result;
 }
 
 /** Batalkan order yang belum dibayar (oleh client). */

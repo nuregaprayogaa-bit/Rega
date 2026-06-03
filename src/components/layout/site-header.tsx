@@ -3,13 +3,19 @@ import { Sparkles } from "lucide-react";
 
 import { getCurrentUser } from "@/server/auth-helpers";
 import { APP_NAME } from "@/lib/constants";
+import { listNotifications, unreadCount } from "@/server/services/notification-service";
 import { Button } from "@/components/ui/button";
 import { SearchBar } from "@/components/layout/search-bar";
 import { UserMenu } from "@/components/layout/user-menu";
+import { NotificationBell } from "@/components/layout/notification-bell";
 
 export async function SiteHeader() {
   const user = await getCurrentUser();
   const isFreelancer = user?.role === "FREELANCER" || user?.role === "ADMIN";
+
+  const [notifItems, notifUnread] = user
+    ? await Promise.all([listNotifications(user.id, 15), unreadCount(user.id)])
+    : [[], 0];
 
   return (
     <header className="sticky top-0 z-40 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80">
@@ -39,6 +45,10 @@ export async function SiteHeader() {
                   <Link href="/register?role=freelancer">Jadi Freelancer</Link>
                 </Button>
               )}
+              <NotificationBell
+                initialItems={JSON.parse(JSON.stringify(notifItems))}
+                initialUnread={notifUnread}
+              />
               <UserMenu
                 name={user.name ?? null}
                 email={user.email ?? null}

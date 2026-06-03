@@ -2,6 +2,8 @@ import Link from "next/link";
 import { SearchX } from "lucide-react";
 
 import { searchGigs, listCategories, type GigSort } from "@/server/services/catalog-service";
+import { getCurrentUser } from "@/server/auth-helpers";
+import { getWishlistedIds } from "@/server/services/wishlist-service";
 import { GigCard } from "@/components/gig/gig-card";
 import { SearchFilters } from "@/components/search/search-filters";
 import { MobileFilters } from "@/components/search/mobile-filters";
@@ -37,6 +39,11 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
       page,
     }),
   ]);
+
+  const user = await getCurrentUser();
+  const wishlisted = user
+    ? await getWishlistedIds(user.id, result.items.map((g) => g.id))
+    : new Set<string>();
 
   const catName = categories.find((c) => c.slug === category)?.name;
   const totalPages = Math.ceil(result.total / result.perPage);
@@ -88,7 +95,7 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
           ) : (
             <div className="grid grid-cols-2 gap-4 md:grid-cols-3">
               {result.items.map((g) => (
-                <GigCard key={g.id} gig={g} />
+                <GigCard key={g.id} gig={g} wishlisted={wishlisted.has(g.id)} />
               ))}
             </div>
           )}

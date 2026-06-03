@@ -12,6 +12,8 @@ import {
   ledgerPayoutReverse,
 } from "@/server/services/ledger-service";
 import { recomputeFreelancerStats } from "@/server/services/profile-service";
+import { notify } from "@/server/services/notification-service";
+import { NotificationType } from "@prisma/client";
 
 export async function getAdminOverview() {
   const [users, freelancers, gigs, orders, pendingPayouts, openDisputes] =
@@ -40,10 +42,21 @@ export async function getAdminOverview() {
 
 /** Setujui payout (dana sudah dipotong saat diajukan). */
 export async function approvePayout(payoutId: string): Promise<{ ok: boolean }> {
+  const payout = await db.payoutRequest.findUnique({ where: { id: payoutId } });
   const res = await db.payoutRequest.updateMany({
     where: { id: payoutId, status: PayoutStatus.PENDING },
     data: { status: PayoutStatus.PAID, processedAt: new Date() },
   });
+  if (res.count > 0 && payout) {
+    await notify({
+      userId: payout.userId,
+      type: NotificationType.PAYOUT,
+      title: "Penarikan dana disetujui ✅",
+      body: "Permintaan penarikan danamu telah diproses dan dibayarkan.",
+      link: "/sell/wallet",
+      email: true,
+    });
+  }
   return { ok: res.count > 0 };
 }
 

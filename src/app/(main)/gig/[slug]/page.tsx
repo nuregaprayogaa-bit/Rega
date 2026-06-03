@@ -14,6 +14,8 @@ import { Stars, RatingSummary } from "@/components/ui/stars";
 import { LevelBadge } from "@/components/ui/level-badge";
 import { GigGallery } from "@/components/gig/gig-gallery";
 import { PackagePanel, type PanelPackage } from "@/components/gig/package-panel";
+import { WishlistButton } from "@/components/gig/wishlist-button";
+import { isWishlisted } from "@/server/services/wishlist-service";
 
 export const dynamic = "force-dynamic";
 
@@ -60,6 +62,7 @@ export default async function GigDetailPage({
 
   const isOwner = user?.id === gig.freelancer.id;
   const canOrder = !isOwner;
+  const wished = user ? await isWishlisted(user.id, gig.id) : false;
 
   return (
     <div className="container py-8">
@@ -96,6 +99,7 @@ export default async function GigDetailPage({
               </Link>
               <LevelBadge level={profile?.level ?? "NEW"} />
               <RatingSummary ratingAvg={gig.ratingAvg} ratingCount={gig.ratingCount} />
+              <WishlistButton gigId={gig.id} initial={wished} variant="full" className="ml-auto" />
             </div>
           </div>
 

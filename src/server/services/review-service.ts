@@ -4,6 +4,8 @@ import { OrderStatus } from "@prisma/client";
 import { db } from "@/server/db";
 import { reviewSchema, type ReviewInput } from "@/lib/validations/review";
 import { recomputeFreelancerStats } from "@/server/services/profile-service";
+import { notify } from "@/server/services/notification-service";
+import { NotificationType } from "@prisma/client";
 
 /** Client memberi review untuk order yang sudah COMPLETED (sekali saja). */
 export async function createReview(
@@ -50,6 +52,13 @@ export async function createReview(
   });
 
   await recomputeFreelancerStats(order.freelancerId);
+  await notify({
+    userId: order.freelancerId,
+    type: NotificationType.REVIEW,
+    title: `Ulasan baru ⭐ ${rating}/5`,
+    body: comment ? `"${comment.slice(0, 120)}"` : "Client memberi ulasan untuk pekerjaanmu.",
+    link: `/orders/${order.id}`,
+  });
   return { ok: true };
 }
 

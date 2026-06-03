@@ -1,7 +1,6 @@
 "use client";
 
-import { useState, useTransition, useRef, useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { useState, useTransition, useRef, useEffect, useCallback } from "react";
 import Image from "next/image";
 import { Send } from "lucide-react";
 import { toast } from "sonner";
@@ -20,17 +19,39 @@ type ChatMessage = {
 
 export function OrderChat({
   orderId,
-  messages,
+  messages: initialMessages,
   currentUserId,
 }: {
   orderId: string;
   messages: ChatMessage[];
   currentUserId: string;
 }) {
-  const router = useRouter();
+  const [messages, setMessages] = useState<ChatMessage[]>(initialMessages);
   const [body, setBody] = useState("");
   const [isPending, startTransition] = useTransition();
   const endRef = useRef<HTMLDivElement>(null);
+
+  const poll = useCallback(async () => {
+    try {
+      const res = await fetch(`/api/orders/${orderId}/messages`, { cache: "no-store" });
+      if (!res.ok) return;
+      const data = await res.json();
+      setMessages(data.messages);
+    } catch {
+      /* abaikan error polling */
+    }
+  }, [orderId]);
+
+  // Polling near-real-time setiap 5 detik + saat tab kembali fokus.
+  useEffect(() => {
+    const id = setInterval(poll, 5000);
+    const onFocus = () => poll();
+    window.addEventListener("focus", onFocus);
+    return () => {
+      clearInterval(id);
+      window.removeEventListener("focus", onFocus);
+    };
+  }, [poll]);
 
   useEffect(() => {
     endRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -44,7 +65,7 @@ export function OrderChat({
       if (res?.error) toast.error(res.error);
       else {
         setBody("");
-        router.refresh();
+        await poll();
       }
     });
   }

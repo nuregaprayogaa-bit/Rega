@@ -18,6 +18,12 @@
 - **Panel admin**: moderasi penarikan dana & resolusi sengketa.
 - **Seed data**: 8 kategori, beberapa freelancer + gig + ulasan demo.
 
+### Phase 2 (✅ selesai)
+- **Notifikasi**: lonceng in-app dengan badge belum-dibaca (polling near-real-time) + **email** best-effort (adapter Resend; nge-log jika belum dikonfigurasi). Terhubung ke event order, kirim hasil, selesai, revisi, pesan, ulasan, payout, & sengketa.
+- **Chat real-time**: pesan per order auto-update tiap beberapa detik tanpa refresh.
+- **Wishlist/Favorit**: simpan jasa (ikon hati di kartu & detail), halaman `/wishlist`.
+- **Sistem revisi**, **wallet & penarikan dana**, **level/badge freelancer** — sudah aktif sejak Phase 1.
+
 ### Integritas keuangan (non-negotiable)
 - Escrow: dana ditahan sampai order diterima/auto-accept.
 - Uang = **integer rupiah** (tanpa float).

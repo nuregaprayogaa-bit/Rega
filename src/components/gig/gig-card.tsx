@@ -6,9 +6,10 @@ import { formatIDR } from "@/lib/money";
 import { initials } from "@/lib/format";
 import { RatingSummary } from "@/components/ui/stars";
 import { LevelBadge } from "@/components/ui/level-badge";
+import { WishlistButton } from "@/components/gig/wishlist-button";
 import type { GigCardData } from "@/server/services/catalog-service";
 
-export function GigCard({ gig }: { gig: GigCardData }) {
+export function GigCard({ gig, wishlisted }: { gig: GigCardData; wishlisted?: boolean }) {
   return (
     <Link
       href={`/gig/${gig.slug}`}
@@ -33,6 +34,7 @@ export function GigCard({ gig }: { gig: GigCardData }) {
             {gig.categoryName}
           </span>
         )}
+        <WishlistButton gigId={gig.id} initial={!!wishlisted} className="absolute right-2 top-2" />
       </div>
 
       <div className="flex flex-1 flex-col gap-2 p-3">

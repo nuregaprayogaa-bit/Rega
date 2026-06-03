@@ -2,6 +2,8 @@ import Link from "next/link";
 import { ShieldCheck, Wallet, MessagesSquare, Star, ArrowRight } from "lucide-react";
 
 import { listCategories, featuredGigs } from "@/server/services/catalog-service";
+import { getCurrentUser } from "@/server/auth-helpers";
+import { getWishlistedIds } from "@/server/services/wishlist-service";
 import { GigCard } from "@/components/gig/gig-card";
 import { CategoryIcon } from "@/components/gig/category-icon";
 import { HeroSearch } from "@/components/layout/hero-search";
@@ -18,7 +20,14 @@ const POPULAR = [
 ];
 
 export default async function HomePage() {
-  const [categories, gigs] = await Promise.all([listCategories(), featuredGigs(8)]);
+  const [categories, gigs, user] = await Promise.all([
+    listCategories(),
+    featuredGigs(8),
+    getCurrentUser(),
+  ]);
+  const wishlisted = user
+    ? await getWishlistedIds(user.id, gigs.map((g) => g.id))
+    : new Set<string>();
 
   return (
     <>
@@ -103,7 +112,7 @@ export default async function HomePage() {
         ) : (
           <div className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-4">
             {gigs.map((g) => (
-              <GigCard key={g.id} gig={g} />
+              <GigCard key={g.id} gig={g} wishlisted={wishlisted.has(g.id)} />
             ))}
           </div>
         )}
