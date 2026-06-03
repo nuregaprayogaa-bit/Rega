@@ -2,6 +2,11 @@ import { redirect } from "next/navigation";
 import { Role } from "@prisma/client";
 import { auth } from "@/server/auth";
 
+/** Apakah login Google dikonfigurasi (kredensial OAuth tersedia)? */
+export function isGoogleConfigured(): boolean {
+  return Boolean(process.env.AUTH_GOOGLE_ID && process.env.AUTH_GOOGLE_SECRET);
+}
+
 /** Ambil sesi saat ini (atau null). */
 export async function getCurrentUser() {
   const session = await auth();
