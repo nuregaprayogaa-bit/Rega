@@ -33,12 +33,9 @@ Kita pakai 2 layanan **gratis**:
 2. Di dashboard, klik **Add New...** → **Project**.
 3. Cari repo **`Rega`** → klik **Import**.
    - Kalau tidak muncul, klik **Adjust GitHub App Permissions** dan beri akses ke repo `Rega`.
-4. **Sebelum deploy, set branch yang benar:**
-   - Di bagian atas konfigurasi ada pilihan **Branch**. Pilih:
-     ```
-     claude/fastwork-marketplace-mvp-b0Wo8
-     ```
-   - (Jika pilihan branch tidak terlihat di sini, lanjut deploy lalu atur di **Settings → Git → Production Branch** seperti Bagian 4.)
+4. **Pilih branch `main`:**
+   - Branch `main` sudah berisi seluruh kode Rega. Jika di konfigurasi ada pilihan **Branch**, pilih **`main`**.
+   - (Opsional, sekali klik supaya lebih rapi: di **GitHub → repo Rega → Settings → Branches → Default branch**, ubah ke **`main`**. Setelah itu Vercel otomatis memakai `main`.)
 5. **Framework Preset** akan terdeteksi **Next.js** (biarkan). **Root Directory** biarkan (`./`).
 6. Buka **Environment Variables**, tambahkan (Name → Value, klik **Add**):
 
@@ -76,11 +73,7 @@ Kita pakai 2 layanan **gratis**:
 
 Jika halaman 404 / kosong, kemungkinan Production Branch belum diset:
 1. Buka project di Vercel → **Settings** → **Git**.
-2. **Production Branch** → isi:
-   ```
-   claude/fastwork-marketplace-mvp-b0Wo8
-   ```
-   → **Save**.
+2. **Production Branch** → isi: `main` → **Save**.
 3. **Deployments** → titik tiga (•••) pada deployment terbaru → **Redeploy**.
 
 ---
