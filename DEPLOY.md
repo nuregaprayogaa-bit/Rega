@@ -1,86 +1,95 @@
-# 🚀 Cara Test Rega Secara Online (Tanpa Install Apa Pun)
+# 🚀 Cara Online-kan Rega (Tanpa Install Apa Pun)
 
-Panduan ini untuk pengguna **Windows** yang ingin melihat hasilnya lewat **link di browser/HP**, tanpa menginstall Node.js atau PostgreSQL. Semua dikerjakan di browser.
+Panduan ini untuk melihat aplikasi lewat **link di browser/HP**, tanpa menginstall Node.js atau PostgreSQL. Semua dikerjakan di browser. **Tidak perlu ngoding.**
 
-Kita pakai 2 layanan gratis:
+Kita pakai 2 layanan **gratis**:
+- **Neon** — database PostgreSQL gratis.
+- **Vercel** — menjalankan aplikasi & memberi link publik.
 
-- **Neon** — database PostgreSQL gratis (cukup daftar, tidak install).
-- **Vercel** — untuk menjalankan aplikasi & memberi link publik.
-
-Total waktu: ± 15 menit. Ikuti urutannya.
+⏱️ Total ± 15 menit. Ikuti urutannya.
 
 ---
 
 ## BAGIAN 1 — Buat Database Gratis di Neon
 
-1. Buka **https://neon.tech** → klik **Sign up** → daftar pakai akun **GitHub** (paling cepat).
-2. Setelah masuk, Neon otomatis menawarkan buat **Project**. Isi:
+1. Buka **https://neon.tech** → **Sign up** → daftar pakai akun **GitHub** (paling cepat).
+2. Buat **Project** baru:
    - **Project name**: `rega`
-   - **Postgres version**: biarkan default
-   - **Region**: pilih yang dekat (mis. Singapore)
+   - **Region**: pilih yang dekat (mis. **Singapore**)
    - Klik **Create project**.
-3. Setelah jadi, muncul kotak **Connection string**. **PENTING:**
-   - Jika ada tombol/toggle **"Pooled connection"**, **MATIKAN** (off). Kita butuh koneksi langsung agar database bisa dibuat otomatis.
-   - Salin seluruh teksnya. Bentuknya seperti:
+3. Muncul kotak **Connection string**. **PENTING:**
+   - Jika ada toggle **"Pooled connection"**, **MATIKAN (off)** — kita butuh koneksi langsung agar tabel bisa dibuat otomatis.
+   - **Salin** seluruh teksnya, bentuknya seperti:
      ```
      postgresql://USER:PASSWORD@ep-xxxx.ap-southeast-1.aws.neon.tech/neondb?sslmode=require
      ```
-   - **Simpan teks ini di Notepad** — nanti dipakai di Vercel. Inilah `DATABASE_URL` kita.
+   - Simpan di Notepad. Ini `DATABASE_URL` kita.
 
 ---
 
 ## BAGIAN 2 — Deploy ke Vercel
 
-1. Buka **https://vercel.com** → **Sign up** → pilih **Continue with GitHub**.
-2. Di dashboard Vercel, klik **Add New...** → **Project**.
-3. Vercel menampilkan daftar repository GitHub-mu. Cari repo **`rega`** → klik **Import**.
-   - Kalau reponya tidak muncul, klik **Adjust GitHub App Permissions** dan beri akses ke repo `rega`.
-4. Di halaman konfigurasi project:
-   - **Framework Preset**: harus terdeteksi **Next.js** (biarkan).
-   - **Root Directory**: biarkan (`./`).
-   - Buka bagian **Environment Variables**, lalu tambahkan satu per satu (Name → Value, klik **Add**):
-
-     | Name | Value |
-     | ---- | ----- |
-     | `DATABASE_URL` | *(tempel connection string dari Neon di Bagian 1)* |
-     | `AUTH_SECRET` | *(teks acak panjang — lihat catatan di bawah)* |
-     | `NEXT_PUBLIC_APP_NAME` | `Rega` |
-     | `NEXT_PUBLIC_DEFAULT_LOCALE` | `id` |
-     | `PPN_PERCENT` | `11` |
-     | `PLATFORM_FEE_PERCENT` | `20` |
-
-     > **Cara bikin `AUTH_SECRET`:** buka **https://generate-secret.vercel.app/32** di tab baru, salin teks yang muncul, tempel sebagai value. (Hanya teks acak, tidak perlu paham isinya.)
-
-5. **JANGAN klik Deploy dulu.** Kita perlu memastikan Vercel memakai branch yang benar:
-   - Klik **Deploy** dulu (deploy pertama mungkin gagal karena branch — tidak apa-apa), **ATAU** ikuti langkah 6 di bawah agar langsung benar.
-
-6. **Set Production Branch ke branch kita** (karena belum ada `main`):
-   - Setelah project terbuat, masuk ke project → **Settings** → **Git**.
-   - Di **Production Branch**, ganti isinya menjadi:
+1. Buka **https://vercel.com** → **Sign up** → **Continue with GitHub**.
+2. Di dashboard, klik **Add New...** → **Project**.
+3. Cari repo **`Rega`** → klik **Import**.
+   - Kalau tidak muncul, klik **Adjust GitHub App Permissions** dan beri akses ke repo `Rega`.
+4. **Sebelum deploy, set branch yang benar:**
+   - Di bagian atas konfigurasi ada pilihan **Branch**. Pilih:
      ```
-     claude/rega-stock-marketplace-wINBD
+     claude/fastwork-marketplace-mvp-b0Wo8
      ```
-   - Klik **Save**.
-7. Picu deploy ulang: buka tab **Deployments** → klik titik tiga (•••) pada deployment terbaru → **Redeploy** → centang **Use existing Build Cache? (boleh tidak)** → **Redeploy**.
+   - (Jika pilihan branch tidak terlihat di sini, lanjut deploy lalu atur di **Settings → Git → Production Branch** seperti Bagian 4.)
+5. **Framework Preset** akan terdeteksi **Next.js** (biarkan). **Root Directory** biarkan (`./`).
+6. Buka **Environment Variables**, tambahkan (Name → Value, klik **Add**):
 
-> Saat build, Vercel otomatis menjalankan: membuat tabel database (`prisma db push`) → mengisi data contoh (seed) → build aplikasi. Jadi kamu **tidak perlu** buka terminal sama sekali.
+   | Name | Value |
+   | ---- | ----- |
+   | `DATABASE_URL` | *(tempel connection string dari Neon di Bagian 1)* |
+   | `AUTH_SECRET` | *(teks acak panjang — lihat catatan)* |
+   | `NEXT_PUBLIC_APP_NAME` | `Rega` |
+
+   > **Cara bikin `AUTH_SECRET`:** buka **https://generate-secret.vercel.app/32** di tab baru, salin teks yang muncul, tempel sebagai value. (Cukup teks acak.)
+
+   Variabel lain **opsional** (sudah ada nilai default): `PLATFORM_FEE_PERCENT` (10), `BUYER_SERVICE_FEE_PERCENT` (5), `ORDER_AUTO_ACCEPT_DAYS` (3). Pembayaran Midtrans juga opsional — tanpa itu, checkout berjalan **mode simulasi** (langsung lunas), pas untuk demo.
+
+7. Klik **Deploy**. Tunggu sampai selesai (± 2–4 menit).
+
+> Saat build, Vercel otomatis: membuat tabel database → mengisi data contoh (kategori, freelancer, gig, ulasan) → build aplikasi. Tidak perlu buka terminal.
 
 ---
 
-## BAGIAN 3 — Buka & Test
+## BAGIAN 3 — Buka & Coba
 
-1. Setelah deployment berstatus **Ready** (hijau), klik tombol **Visit** atau buka URL yang diberikan, mis. `https://rega-xxxx.vercel.app`.
-2. Kamu akan melihat **landing page Rega** berbahasa Indonesia: judul "Temukan visual otentik Indonesia", tombol "Mulai Jelajahi" & "Jadi Kontributor".
-3. Setelah ini berhasil, isi `NEXT_PUBLIC_APP_URL` di Settings → Environment Variables dengan URL Vercel-mu, lalu redeploy (opsional, untuk fase berikutnya).
-
-> **Catatan:** di Fase 0 yang tampil baru landing page. Halaman katalog, login, upload, dst. akan muncul di fase-fase berikutnya. Database & data contoh sudah terpasang dan siap dipakai fase selanjutnya.
+1. Setelah status **Ready** (hijau), klik **Visit** atau buka URL-nya (mis. `https://rega-xxxx.vercel.app`).
+2. Kamu akan melihat **landing page Rega**: hero "Temukan freelancer terbaik...", kategori, dan jasa populer.
+3. Login pakai **akun demo** (password: `password123`):
+   | Peran | Email |
+   | ----- | ----- |
+   | Client | `client@rega.id` |
+   | Freelancer | `rani.desain@rega.id` |
+   | Admin | `admin@rega.id` |
+4. Coba alurnya: cari jasa → buka detail → **Pesan** (mode simulasi langsung lunas) → buka **Pesanan Saya** → (login sebagai freelancer) kirim hasil → (kembali sebagai client) **Terima & Selesaikan** → beri ulasan.
 
 ---
 
-## ❓ Kalau Gagal
+## BAGIAN 4 — Kalau Branch Belum Benar
 
-- **Build error "Can't reach database"**: pastikan `DATABASE_URL` dari Neon benar dan **Pooled connection dimatikan**. Salin ulang dari Neon → update env var di Vercel → Redeploy.
-- **Halaman kosong / 404**: pastikan **Production Branch** = `claude/rega-stock-marketplace-wINBD` (Bagian 2, langkah 6), lalu Redeploy.
-- **Repo tidak muncul di Vercel**: Vercel → Settings → akun → **GitHub App permissions** → beri akses repo `rega`.
+Jika halaman 404 / kosong, kemungkinan Production Branch belum diset:
+1. Buka project di Vercel → **Settings** → **Git**.
+2. **Production Branch** → isi:
+   ```
+   claude/fastwork-marketplace-mvp-b0Wo8
+   ```
+   → **Save**.
+3. **Deployments** → titik tiga (•••) pada deployment terbaru → **Redeploy**.
 
-Setiap kali ada update kode baru (fase berikutnya) di-push ke branch ini, Vercel otomatis deploy ulang.
+---
+
+## ❓ Troubleshooting
+
+- **Build error "Can't reach database"** → pastikan `DATABASE_URL` benar & **Pooled connection dimatikan** di Neon. Perbarui env var → **Redeploy**.
+- **Tidak bisa login / sesi error** → pastikan `AUTH_SECRET` sudah diisi (tidak boleh kosong).
+- **Repo tidak muncul di Vercel** → Vercel → **Settings → GitHub App permissions** → beri akses repo `Rega`.
+- **Mau pembayaran sungguhan (sandbox)** → tambahkan `MIDTRANS_SERVER_KEY` & `MIDTRANS_CLIENT_KEY` dari dashboard Midtrans, lalu Redeploy.
+
+Setiap kali ada update kode baru di-push ke branch ini, Vercel **otomatis deploy ulang**.

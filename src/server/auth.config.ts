@@ -15,6 +15,9 @@ const ROUTE_GUARDS: { prefix: string; roles: Role[] }[] = [
 ];
 
 export const authConfig = {
+  // Percayai host dari header (aman di Vercel & platform lain) agar login/redirect
+  // bekerja tanpa harus mengeset AUTH_URL secara manual.
+  trustHost: true,
   pages: {
     signIn: "/login",
   },
