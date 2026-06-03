@@ -1,0 +1,91 @@
+import { Users, Briefcase, Package, ShoppingBag } from "lucide-react";
+
+import { requireRole } from "@/server/auth-helpers";
+import { getAdminOverview } from "@/server/services/admin-service";
+import { Role } from "@prisma/client";
+import { formatIDR } from "@/lib/money";
+import { formatDate } from "@/lib/format";
+import { PayoutButtons, DisputeButtons } from "@/components/admin/admin-buttons";
+
+export const dynamic = "force-dynamic";
+
+export default async function AdminPage() {
+  await requireRole([Role.ADMIN]);
+  const data = await getAdminOverview();
+
+  return (
+    <div className="container max-w-5xl py-8">
+      <h1 className="text-2xl font-bold">Panel Admin</h1>
+      <p className="text-sm text-muted-foreground">Moderasi platform Rega</p>
+
+      <div className="mt-6 grid grid-cols-2 gap-4 sm:grid-cols-4">
+        <Stat icon={Users} label="Total user" value={data.users} />
+        <Stat icon={Briefcase} label="Freelancer" value={data.freelancers} />
+        <Stat icon={Package} label="Jasa" value={data.gigs} />
+        <Stat icon={ShoppingBag} label="Order" value={data.orders} />
+      </div>
+
+      {/* Payout pending */}
+      <section className="mt-8">
+        <h2 className="mb-3 text-lg font-semibold">Permintaan penarikan dana</h2>
+        {data.pendingPayouts.length === 0 ? (
+          <p className="rounded-xl border border-dashed py-10 text-center text-sm text-muted-foreground">
+            Tidak ada permintaan penarikan.
+          </p>
+        ) : (
+          <div className="space-y-3">
+            {data.pendingPayouts.map((p) => (
+              <div key={p.id} className="flex flex-wrap items-center justify-between gap-3 rounded-xl border bg-card p-4">
+                <div>
+                  <p className="font-semibold">{formatIDR(p.amountIDR)}</p>
+                  <p className="text-sm text-muted-foreground">
+                    {p.user.name} · {p.bankName} {p.accountNo} a.n. {p.accountName}
+                  </p>
+                  <p className="text-xs text-muted-foreground">{formatDate(p.createdAt)}</p>
+                </div>
+                <PayoutButtons id={p.id} />
+              </div>
+            ))}
+          </div>
+        )}
+      </section>
+
+      {/* Sengketa */}
+      <section className="mt-8">
+        <h2 className="mb-3 text-lg font-semibold">Sengketa terbuka</h2>
+        {data.openDisputes.length === 0 ? (
+          <p className="rounded-xl border border-dashed py-10 text-center text-sm text-muted-foreground">
+            Tidak ada sengketa.
+          </p>
+        ) : (
+          <div className="space-y-3">
+            {data.openDisputes.map((d) => (
+              <div key={d.id} className="rounded-xl border bg-card p-4">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <div>
+                    <p className="font-semibold">{d.order.gig.title}</p>
+                    <p className="text-xs text-muted-foreground">
+                      Order #{d.order.code} · diajukan oleh {d.openedBy.name}
+                    </p>
+                  </div>
+                  <DisputeButtons orderId={d.order.id} />
+                </div>
+                <p className="mt-2 rounded-lg bg-muted/50 p-3 text-sm">{d.reason}</p>
+              </div>
+            ))}
+          </div>
+        )}
+      </section>
+    </div>
+  );
+}
+
+function Stat({ icon: Icon, label, value }: { icon: React.ElementType; label: string; value: number }) {
+  return (
+    <div className="rounded-xl border bg-card p-4">
+      <Icon className="h-5 w-5 text-primary" />
+      <p className="mt-2 text-xs text-muted-foreground">{label}</p>
+      <p className="text-xl font-bold">{value}</p>
+    </div>
+  );
+}

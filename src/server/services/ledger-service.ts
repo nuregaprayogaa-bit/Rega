@@ -136,6 +136,36 @@ export async function ledgerRefund(
 }
 
 /**
+ * PAYOUT_REVERSE — pembatalan penarikan (ditolak admin); dana kembali ke dompet.
+ * DEBIT  PAYOUT_CASH   (amount)
+ * CREDIT wallet:<user> (amount)
+ */
+export async function ledgerPayoutReverse(
+  tx: Tx,
+  payout: { id: string; userId: string; amountIDR: number },
+): Promise<void> {
+  await tx.ledgerEntry.createMany({
+    data: [
+      {
+        account: "PAYOUT_CASH",
+        direction: LedgerDirection.DEBIT,
+        amountIDR: payout.amountIDR,
+        type: "PAYOUT_REVERSE",
+        ref: `payout:${payout.id}:reverse:cash`,
+      },
+      {
+        account: walletAccount(payout.userId),
+        direction: LedgerDirection.CREDIT,
+        amountIDR: payout.amountIDR,
+        type: "PAYOUT_REVERSE",
+        ref: `payout:${payout.id}:reverse:wallet`,
+      },
+    ],
+    skipDuplicates: true,
+  });
+}
+
+/**
  * PAYOUT — penarikan dana freelancer; saldo dompet keluar.
  * DEBIT  wallet:<user> (amount)
  * CREDIT PAYOUT_CASH   (amount)

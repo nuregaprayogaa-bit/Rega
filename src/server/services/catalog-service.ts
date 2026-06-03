@@ -101,7 +101,7 @@ export async function searchGigs(params: SearchParams): Promise<{
     take: perPage,
   });
 
-  let items: GigCardData[] = gigs.map((g) => ({
+  const items: GigCardData[] = gigs.map((g) => ({
     id: g.id,
     slug: g.slug,
     title: g.title,

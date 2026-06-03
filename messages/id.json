@@ -1,35 +1,25 @@
 {
   "common": {
-    "appName": "Nusagraf",
-    "tagline": "Foto & video stok karya kreator Indonesia",
-    "search": "Cari foto atau video...",
+    "appName": "Rega",
+    "tagline": "Marketplace jasa freelance terpercaya di Indonesia",
+    "search": "Cari jasa...",
     "login": "Masuk",
     "register": "Daftar",
     "logout": "Keluar",
     "loading": "Memuat...",
-    "cart": "Keranjang",
-    "buy": "Beli",
-    "download": "Unduh",
     "price": "Harga",
-    "ppn": "PPN",
     "total": "Total"
   },
   "nav": {
-    "explore": "Jelajahi",
+    "explore": "Jelajahi Jasa",
     "categories": "Kategori",
-    "sell": "Jual Karya",
-    "myDownloads": "Unduhan Saya",
+    "sell": "Jadi Freelancer",
+    "orders": "Pesanan Saya",
     "dashboard": "Dasbor"
   },
-  "home": {
-    "heroTitle": "Temukan visual otentik Indonesia",
-    "heroSubtitle": "Ribuan foto & video stok berlisensi dari kreator lokal. Kuliner, pariwisata, UMKM, dan banyak lagi.",
-    "cta": "Mulai Jelajahi",
-    "becomeContributor": "Jadi Kontributor"
-  },
   "roles": {
-    "buyer": "Pembeli",
-    "contributor": "Kontributor",
+    "client": "Client",
+    "freelancer": "Freelancer",
     "admin": "Admin"
   }
 }

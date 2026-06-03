@@ -12,7 +12,6 @@ import { formatDate, initials } from "@/lib/format";
 import { PACKAGE_TIER_LABEL, PACKAGE_TIERS } from "@/lib/constants";
 import { Stars, RatingSummary } from "@/components/ui/stars";
 import { LevelBadge } from "@/components/ui/level-badge";
-import { Button } from "@/components/ui/button";
 import { GigGallery } from "@/components/gig/gig-gallery";
 import { PackagePanel, type PanelPackage } from "@/components/gig/package-panel";
 

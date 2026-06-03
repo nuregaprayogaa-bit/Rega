@@ -1,35 +1,25 @@
 {
   "common": {
-    "appName": "Nusagraf",
-    "tagline": "Stock photos & videos by Indonesian creators",
-    "search": "Search photos or videos...",
-    "login": "Sign in",
+    "appName": "Rega",
+    "tagline": "Indonesia's trusted freelance services marketplace",
+    "search": "Search services...",
+    "login": "Log in",
     "register": "Sign up",
-    "logout": "Sign out",
+    "logout": "Log out",
     "loading": "Loading...",
-    "cart": "Cart",
-    "buy": "Buy",
-    "download": "Download",
     "price": "Price",
-    "ppn": "VAT",
     "total": "Total"
   },
   "nav": {
-    "explore": "Explore",
+    "explore": "Explore Services",
     "categories": "Categories",
-    "sell": "Sell",
-    "myDownloads": "My Downloads",
+    "sell": "Become a Freelancer",
+    "orders": "My Orders",
     "dashboard": "Dashboard"
   },
-  "home": {
-    "heroTitle": "Discover authentic Indonesian visuals",
-    "heroSubtitle": "Thousands of licensed stock photos & videos from local creators. Culinary, tourism, SMEs, and more.",
-    "cta": "Start Exploring",
-    "becomeContributor": "Become a Contributor"
-  },
   "roles": {
-    "buyer": "Buyer",
-    "contributor": "Contributor",
+    "client": "Client",
+    "freelancer": "Freelancer",
     "admin": "Admin"
   }
 }
