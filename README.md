@@ -1,129 +1,101 @@
-# Nusagraf
+# Rega
 
-**Marketplace foto & video stok untuk pasar Indonesia.** Mirip Shutterstock/Adobe Stock, tapi fokus lokal: Bahasa Indonesia, mata uang IDR, pembayaran lokal (QRIS, Virtual Account, e-wallet via Midtrans), serta kepatuhan PPN 11%.
+**Marketplace jasa freelance multi-vendor untuk pasar Indonesia** (referensi: Fastwork). Freelancer menjual jasa dengan paket bertingkat (Basic/Standar/Premium), client memesan dan membayar lewat **escrow** — dana baru diteruskan ke freelancer setelah hasil pekerjaan diterima.
 
-## ✨ Fitur per Fase
+- 🇮🇩 Bahasa Indonesia, harga **Rupiah (IDR)**, pembayaran lokal (QRIS, VA, e-wallet via Midtrans).
+- 🔒 **Pembayaran escrow** + **buku besar double-entry immutable** (uang disimpan sebagai integer rupiah, bukan float).
+- 📱 Desain **mobile-first**, bersih & modern.
 
-| Fase | Fitur | Status |
-| ---- | ----- | ------ |
-| 0 | Setup proyek (Next.js, Tailwind, shadcn/ui, Prisma, i18n) | ✅ Selesai |
-| 1 | Auth & peran (email/password + Google, role-based dashboard) | ✅ Selesai |
-| 2 | Upload kontributor (presigned upload, thumbnail + watermark) | ✅ Selesai |
-| 3 | Moderasi admin (approve/reject + alasan) | ✅ Selesai |
-| 4 | Katalog & pencarian publik (filter tipe/kategori, detail asset) | ✅ Selesai |
-| 5 | Cart & checkout (Midtrans Snap + webhook) | ✅ Selesai |
-| 6 | Akses pasca-beli (presigned download, riwayat order + invoice) | ✅ Selesai |
-| 7 | Dashboard kontributor (statistik + earning ledger) | ✅ Selesai |
+## ✨ Fitur
 
-## 🧪 Mode Demo (tanpa kredensial eksternal)
+### Phase 1 — MVP (✅ selesai)
+- **Auth & peran**: daftar sebagai **Client** atau **Freelancer** (email/password + Google), RBAC.
+- **Freelancer**: profil + keahlian, **CRUD jasa (gig)** dengan paket Basic/Standar/Premium (harga, durasi, revisi, deliverables), dashboard order masuk, **dompet & penarikan dana**.
+- **Client**: landing, **browse per kategori**, **pencarian + filter** (kategori, harga, rating, durasi) + sorting, halaman detail gig dengan **tabel perbandingan paket**, profil publik freelancer.
+- **Alur order + escrow**: pilih paket → checkout → bayar (sandbox/simulasi) → **dana ditahan** → freelancer kerjakan & kirim hasil → client terima → **dana rilis** ke saldo freelancer (atau **auto-accept** setelah X hari).
+- **Review & rating** setelah order selesai; **level/badge** freelancer otomatis.
+- **Chat per order**, **revisi** sesuai kuota paket, **sengketa** (dispute).
+- **Panel admin**: moderasi penarikan dana & resolusi sengketa.
+- **Seed data**: 8 kategori, beberapa freelancer + gig + ulasan demo.
 
-Aplikasi tetap **bisa dipakai end-to-end walau R2/S3 & Midtrans belum diisi**:
-
-- **Storage belum dikonfigurasi** → gambar katalog memakai placeholder; upload menyimpan metadata saja (file tidak benar-benar terunggah); unduhan memberi gambar placeholder. Isi `S3_*` untuk upload/preview/watermark nyata.
-- **Midtrans belum dikonfigurasi** → checkout berjalan dalam **mode simulasi**: order langsung dianggap LUNAS, hak unduh & earning ledger tetap terbentuk. Isi `MIDTRANS_*` untuk pembayaran nyata (QRIS/VA/e-wallet/kartu).
-- **Google OAuth** opsional — login email/password tetap jalan tanpa `AUTH_GOOGLE_*`.
+### Integritas keuangan (non-negotiable)
+- Escrow: dana ditahan sampai order diterima/auto-accept.
+- Uang = **integer rupiah** (tanpa float).
+- **Ledger double-entry & immutable** — koreksi lewat entri baru, bukan edit.
+- **Webhook pembayaran idempotent** (anti dobel-proses).
+- Operasi saldo + status order **atomic** (DB transaction).
+- **State machine order** eksplisit: `PENDING_PAYMENT → IN_PROGRESS → DELIVERED → COMPLETED` (cabang `REVISION_REQUESTED`, `CANCELLED`, `DISPUTED`).
 
 ## 🧱 Tech Stack
-
-- **Next.js 15** (App Router) + **TypeScript** (strict)
+- **Next.js 15** (App Router) + **TypeScript**
+- **PostgreSQL** + **Prisma**
+- **Auth.js (NextAuth v5)** — credentials + Google, RBAC
 - **Tailwind CSS** + **shadcn/ui**
-- **PostgreSQL** + **Prisma ORM**
-- **Auth.js (NextAuth v5)** — email/password + Google OAuth
-- **Cloudflare R2** (S3-compatible) via AWS SDK v3 — presigned upload/download
-- **Midtrans Snap** — pembayaran (abstraksi `PaymentProvider`, siap swap ke Xendit)
-- **Sharp** (gambar/watermark) + **ffmpeg** (preview video)
-- **next-intl** — i18n (id default, en)
-- **Zod** — validasi input
+- **Midtrans** (sandbox) via adapter pembayaran (mudah ganti ke Xendit)
+- **next-intl** (id/en) — default Bahasa Indonesia
+- Object storage **S3/R2** (opsional)
 
-## 📁 Struktur Folder
+## 🚀 Menjalankan secara lokal
 
-```
-src/
-├─ app/
-│  ├─ (public)/        # home, search, asset/[id]
-│  ├─ (auth)/          # login, register
-│  ├─ (buyer)/         # cart, checkout, downloads, orders
-│  ├─ (contributor)/   # upload, dashboard kontributor
-│  ├─ (admin)/         # moderasi
-│  └─ api/             # auth, upload/presign, download, webhooks/midtrans
-├─ components/         # ui/ (shadcn) + komponen fitur
-├─ server/
-│  ├─ services/        # LOGIKA BISNIS (config, asset, order, payment, earning)
-│  ├─ adapters/        # storage/, payment/, media/
-│  └─ db.ts            # singleton Prisma client
-├─ lib/                # money (IDR), utils, constants
-└─ i18n/               # konfigurasi next-intl
-messages/              # id.json, en.json
-prisma/                # schema.prisma, seed.ts
-```
-
-**Prinsip arsitektur:** komponen UI tidak pernah memanggil Prisma/SDK eksternal langsung. Semua melalui *service layer* di `src/server/services`. Otorisasi & cek kepemilikan file selalu divalidasi di server; **file key asli tidak pernah diekspos ke client**.
-
-## 🚀 Setup Lokal
-
-### Prasyarat
-- Node.js 22+ (lihat `.nvmrc`)
-- PostgreSQL 14+ berjalan lokal
-- (Fase 2+) `ffmpeg` terpasang untuk pemrosesan video
-
-### Langkah
+Prasyarat: Node 18+ (lihat `.nvmrc`), PostgreSQL, dan **pnpm**.
 
 ```bash
-# 1. Install dependencies
-npm install        # atau: pnpm install
+# 1. Install dependency
+pnpm install
 
 # 2. Siapkan environment
 cp .env.example .env
-# Edit .env: minimal isi DATABASE_URL dan AUTH_SECRET
-#   AUTH_SECRET: jalankan `openssl rand -base64 32`
+#   - isi DATABASE_URL (lokal atau Neon)
+#   - isi AUTH_SECRET  (openssl rand -base64 32)
+#   - (opsional) Midtrans/Google/S3. Tanpa Midtrans, checkout = MODE SIMULASI.
 
-# 3. Buat database (jika belum ada)
-createdb nusagraf   # atau lewat psql: CREATE DATABASE nusagraf;
+# 3. Siapkan database & data awal
+pnpm db:push      # buat tabel sesuai schema
+pnpm db:seed      # isi kategori, freelancer, gig & ulasan demo
 
-# 4. Terapkan skema ke database
-npm run db:push
-
-# 5. Isi data contoh (kategori, lisensi, user, asset placeholder)
-npm run db:seed
-
-# 6. Jalankan dev server
-npm run dev
-# Buka http://localhost:3000
+# 4. Jalankan
+pnpm dev          # http://localhost:3000
 ```
 
-### Akun seed (password semua: `password123`)
-
+### Akun demo (password: `password123`)
 | Peran | Email |
 | ----- | ----- |
-| Admin | `admin@nusagraf.id` |
-| Kontributor | `kreator@nusagraf.id` |
-| Pembeli | `pembeli@nusagraf.id` |
+| Admin | `admin@rega.id` |
+| Client | `client@rega.id` |
+| Freelancer | `rani.desain@rega.id`, `dimas.dev@rega.id`, `sari.tulis@rega.id`, `agus.video@rega.id` |
 
-## 🔧 Script
+> **Mode simulasi pembayaran:** jika `MIDTRANS_SERVER_KEY` kosong, setiap checkout langsung dianggap lunas (dana masuk escrow) — praktis untuk demo tanpa setup pembayaran.
 
+## 📜 Skrip penting
 | Perintah | Fungsi |
 | -------- | ------ |
-| `npm run dev` | Jalankan dev server |
-| `npm run build` | Build produksi (generate Prisma + Next build) |
-| `npm run typecheck` | Cek tipe TypeScript |
-| `npm run lint` | ESLint |
-| `npm run db:push` | Sinkronkan skema Prisma ke DB |
-| `npm run db:migrate` | Buat migrasi dev |
-| `npm run db:seed` | Isi data contoh |
-| `npm run db:studio` | Buka Prisma Studio |
+| `pnpm dev` | Jalankan mode pengembangan |
+| `pnpm build` | Build produksi |
+| `pnpm db:push` | Sinkronkan schema ke database |
+| `pnpm db:seed` | Isi data awal |
+| `pnpm db:studio` | Buka Prisma Studio (lihat data) |
+| `pnpm typecheck` | Cek tipe TypeScript |
 
-## 💰 Konfigurasi Bisnis
+## ☁️ Deploy (Vercel + Neon)
+1. Buat database gratis di [Neon](https://neon.tech), salin connection string ke `DATABASE_URL`.
+2. Import repo ini ke **Vercel**, set environment variables (minimal `DATABASE_URL`, `AUTH_SECRET`, `AUTH_URL`).
+3. Vercel menjalankan `vercel-build` (`prisma db push` + `seed` + `build`) otomatis.
+4. (Opsional) **Vercel Cron** sudah dikonfigurasi di `vercel.json` untuk menjalankan auto-accept tiap jam (set `CRON_SECRET` agar aman).
 
-Nilai berikut tersimpan di tabel `AppConfig` (bisa diubah admin tanpa deploy), dengan fallback dari env:
+Lihat **DEPLOY.md** untuk panduan langkah-demi-langkah.
 
-| Key | Default | Keterangan |
-| --- | ------- | ---------- |
-| `PPN_PERCENT` | 11 | Tarif PPN ditampilkan terpisah di checkout |
-| `PLATFORM_FEE_PERCENT` | 20 | Komisi platform; kontributor menerima 80% |
-| `DOWNLOAD_URL_TTL_SECONDS` | 300 | Masa berlaku presigned URL unduhan |
+## 🗂️ Struktur singkat
+```
+prisma/schema.prisma        # model data (Gig, Order, LedgerEntry, dll)
+prisma/seed.ts              # data awal
+src/server/services/        # logika bisnis (gig, order/escrow, ledger, wallet, ...)
+src/server/adapters/        # payment (Midtrans) & storage (S3) — mudah diganti
+src/app/(main)/             # halaman publik + client + freelancer (/sell) + admin
+src/components/             # UI (gig, order, sell, ui/shadcn)
+```
 
-## 📝 Catatan Keamanan
-
-- Semua secret lewat `.env` (lihat `.env.example`). Tidak ada kredensial hardcoded.
-- Upload kontributor masuk status `PENDING` dan wajib di-approve admin sebelum tayang.
-- Publik hanya melihat versi ber-watermark / preview clip. File asli hanya via presigned URL berbatas waktu setelah pembelian sah.
+## 💸 Model keuangan singkat
+- Client membayar **harga paket + biaya layanan** (`BUYER_SERVICE_FEE_PERCENT`).
+- Freelancer menerima **harga paket − komisi** (`PLATFORM_FEE_PERCENT`).
+- Platform mendapat **biaya layanan + komisi**.
+- Semua dicatat di buku besar double-entry yang selalu seimbang (debit = kredit).

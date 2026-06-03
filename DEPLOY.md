@@ -1,4 +1,4 @@
-# 🚀 Cara Test Nusagraf Secara Online (Tanpa Install Apa Pun)
+# 🚀 Cara Test Rega Secara Online (Tanpa Install Apa Pun)
 
 Panduan ini untuk pengguna **Windows** yang ingin melihat hasilnya lewat **link di browser/HP**, tanpa menginstall Node.js atau PostgreSQL. Semua dikerjakan di browser.
 
@@ -15,7 +15,7 @@ Total waktu: ± 15 menit. Ikuti urutannya.
 
 1. Buka **https://neon.tech** → klik **Sign up** → daftar pakai akun **GitHub** (paling cepat).
 2. Setelah masuk, Neon otomatis menawarkan buat **Project**. Isi:
-   - **Project name**: `nusagraf`
+   - **Project name**: `rega`
    - **Postgres version**: biarkan default
    - **Region**: pilih yang dekat (mis. Singapore)
    - Klik **Create project**.
@@ -44,7 +44,7 @@ Total waktu: ± 15 menit. Ikuti urutannya.
      | ---- | ----- |
      | `DATABASE_URL` | *(tempel connection string dari Neon di Bagian 1)* |
      | `AUTH_SECRET` | *(teks acak panjang — lihat catatan di bawah)* |
-     | `NEXT_PUBLIC_APP_NAME` | `Nusagraf` |
+     | `NEXT_PUBLIC_APP_NAME` | `Rega` |
      | `NEXT_PUBLIC_DEFAULT_LOCALE` | `id` |
      | `PPN_PERCENT` | `11` |
      | `PLATFORM_FEE_PERCENT` | `20` |
@@ -58,7 +58,7 @@ Total waktu: ± 15 menit. Ikuti urutannya.
    - Setelah project terbuat, masuk ke project → **Settings** → **Git**.
    - Di **Production Branch**, ganti isinya menjadi:
      ```
-     claude/nusagraf-stock-marketplace-wINBD
+     claude/rega-stock-marketplace-wINBD
      ```
    - Klik **Save**.
 7. Picu deploy ulang: buka tab **Deployments** → klik titik tiga (•••) pada deployment terbaru → **Redeploy** → centang **Use existing Build Cache? (boleh tidak)** → **Redeploy**.
@@ -70,7 +70,7 @@ Total waktu: ± 15 menit. Ikuti urutannya.
 ## BAGIAN 3 — Buka & Test
 
 1. Setelah deployment berstatus **Ready** (hijau), klik tombol **Visit** atau buka URL yang diberikan, mis. `https://rega-xxxx.vercel.app`.
-2. Kamu akan melihat **landing page Nusagraf** berbahasa Indonesia: judul "Temukan visual otentik Indonesia", tombol "Mulai Jelajahi" & "Jadi Kontributor".
+2. Kamu akan melihat **landing page Rega** berbahasa Indonesia: judul "Temukan visual otentik Indonesia", tombol "Mulai Jelajahi" & "Jadi Kontributor".
 3. Setelah ini berhasil, isi `NEXT_PUBLIC_APP_URL` di Settings → Environment Variables dengan URL Vercel-mu, lalu redeploy (opsional, untuk fase berikutnya).
 
 > **Catatan:** di Fase 0 yang tampil baru landing page. Halaman katalog, login, upload, dst. akan muncul di fase-fase berikutnya. Database & data contoh sudah terpasang dan siap dipakai fase selanjutnya.
@@ -80,7 +80,7 @@ Total waktu: ± 15 menit. Ikuti urutannya.
 ## ❓ Kalau Gagal
 
 - **Build error "Can't reach database"**: pastikan `DATABASE_URL` dari Neon benar dan **Pooled connection dimatikan**. Salin ulang dari Neon → update env var di Vercel → Redeploy.
-- **Halaman kosong / 404**: pastikan **Production Branch** = `claude/nusagraf-stock-marketplace-wINBD` (Bagian 2, langkah 6), lalu Redeploy.
+- **Halaman kosong / 404**: pastikan **Production Branch** = `claude/rega-stock-marketplace-wINBD` (Bagian 2, langkah 6), lalu Redeploy.
 - **Repo tidak muncul di Vercel**: Vercel → Settings → akun → **GitHub App permissions** → beri akses repo `rega`.
 
 Setiap kali ada update kode baru (fase berikutnya) di-push ke branch ini, Vercel otomatis deploy ulang.

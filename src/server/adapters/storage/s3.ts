@@ -29,7 +29,7 @@ function getClient(): S3Client {
 }
 
 function bucket(): string {
-  return process.env.S3_BUCKET || "nusagraf-media";
+  return process.env.S3_BUCKET || "rega-media";
 }
 
 /** Apakah storage sudah dikonfigurasi (kredensial tersedia)? */
