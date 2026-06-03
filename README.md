@@ -1,4 +1,4 @@
-# Rega
+# Worq
 
 **Marketplace jasa freelance multi-vendor untuk pasar Indonesia** (referensi: Fastwork). Freelancer menjual jasa dengan paket bertingkat (Basic/Standar/Premium), client memesan dan membayar lewat **escrow** — dana baru diteruskan ke freelancer setelah hasil pekerjaan diterima.
 
@@ -74,9 +74,9 @@ pnpm dev          # http://localhost:3000
 ### Akun demo (password: `password123`)
 | Peran | Email |
 | ----- | ----- |
-| Admin | `admin@rega.id` |
-| Client | `client@rega.id` |
-| Freelancer | `rani.desain@rega.id`, `dimas.dev@rega.id`, `sari.tulis@rega.id`, `agus.video@rega.id` |
+| Admin | `admin@worq.id` |
+| Client | `client@worq.id` |
+| Freelancer | `rani.desain@worq.id`, `dimas.dev@worq.id`, `sari.tulis@worq.id`, `agus.video@worq.id` |
 
 > **Mode simulasi pembayaran:** jika `MIDTRANS_SERVER_KEY` kosong, setiap checkout langsung dianggap lunas (dana masuk escrow) — praktis untuk demo tanpa setup pembayaran.
 

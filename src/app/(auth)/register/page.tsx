@@ -64,8 +64,8 @@ export default function RegisterPage() {
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="text-2xl">Buat akun Rega</CardTitle>
-        <CardDescription>Gratis. Pilih cara kamu menggunakan Rega.</CardDescription>
+        <CardTitle className="text-2xl">Buat akun Worq</CardTitle>
+        <CardDescription>Gratis. Pilih cara kamu menggunakan Worq.</CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
         {/* Pemilih peran */}

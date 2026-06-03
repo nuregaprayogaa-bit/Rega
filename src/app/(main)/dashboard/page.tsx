@@ -23,7 +23,7 @@ export default async function DashboardPage() {
   return (
     <div className="container max-w-5xl py-8">
       <h1 className="text-2xl font-bold">Halo, {user.name?.split(" ")[0] ?? "👋"}</h1>
-      <p className="text-sm text-muted-foreground">Selamat datang kembali di Rega.</p>
+      <p className="text-sm text-muted-foreground">Selamat datang kembali di Worq.</p>
 
       {isFreelancer && <FreelancerSummary userId={user.id} />}
 

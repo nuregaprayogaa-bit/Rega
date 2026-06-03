@@ -52,7 +52,7 @@ export default function LoginPage() {
       <CardHeader>
         <CardTitle className="text-2xl">Masuk</CardTitle>
         <CardDescription>
-          Masuk ke akun Rega untuk memesan atau menjual jasa.
+          Masuk ke akun Worq untuk memesan atau menjual jasa.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">

@@ -1,4 +1,4 @@
-# 🚀 Cara Online-kan Rega (Tanpa Install Apa Pun)
+# 🚀 Cara Online-kan Worq (Tanpa Install Apa Pun)
 
 Panduan ini untuk melihat aplikasi lewat **link di browser/HP**, tanpa menginstall Node.js atau PostgreSQL. Semua dikerjakan di browser. **Tidak perlu ngoding.**
 
@@ -31,11 +31,11 @@ Kita pakai 2 layanan **gratis**:
 
 1. Buka **https://vercel.com** → **Sign up** → **Continue with GitHub**.
 2. Di dashboard, klik **Add New...** → **Project**.
-3. Cari repo **`Rega`** → klik **Import**.
-   - Kalau tidak muncul, klik **Adjust GitHub App Permissions** dan beri akses ke repo `Rega`.
+3. Cari repo **`Worq`** → klik **Import**.
+   - Kalau tidak muncul, klik **Adjust GitHub App Permissions** dan beri akses ke repo `Worq`.
 4. **Pilih branch `main`:**
-   - Branch `main` sudah berisi seluruh kode Rega. Jika di konfigurasi ada pilihan **Branch**, pilih **`main`**.
-   - (Opsional, sekali klik supaya lebih rapi: di **GitHub → repo Rega → Settings → Branches → Default branch**, ubah ke **`main`**. Setelah itu Vercel otomatis memakai `main`.)
+   - Branch `main` sudah berisi seluruh kode Worq. Jika di konfigurasi ada pilihan **Branch**, pilih **`main`**.
+   - (Opsional, sekali klik supaya lebih rapi: di **GitHub → repo Worq → Settings → Branches → Default branch**, ubah ke **`main`**. Setelah itu Vercel otomatis memakai `main`.)
 5. **Framework Preset** akan terdeteksi **Next.js** (biarkan). **Root Directory** biarkan (`./`).
 6. Buka **Environment Variables**, tambahkan (Name → Value, klik **Add**):
 
@@ -43,7 +43,7 @@ Kita pakai 2 layanan **gratis**:
    | ---- | ----- |
    | `DATABASE_URL` | *(tempel connection string dari Neon di Bagian 1)* |
    | `AUTH_SECRET` | *(teks acak panjang — lihat catatan)* |
-   | `NEXT_PUBLIC_APP_NAME` | `Rega` |
+   | `NEXT_PUBLIC_APP_NAME` | `Worq` |
 
    > **Cara bikin `AUTH_SECRET`:** buka **https://generate-secret.vercel.app/32** di tab baru, salin teks yang muncul, tempel sebagai value. (Cukup teks acak.)
 
@@ -58,13 +58,13 @@ Kita pakai 2 layanan **gratis**:
 ## BAGIAN 3 — Buka & Coba
 
 1. Setelah status **Ready** (hijau), klik **Visit** atau buka URL-nya (mis. `https://rega-xxxx.vercel.app`).
-2. Kamu akan melihat **landing page Rega**: hero "Temukan freelancer terbaik...", kategori, dan jasa populer.
+2. Kamu akan melihat **landing page Worq**: hero "Temukan freelancer terbaik...", kategori, dan jasa populer.
 3. Login pakai **akun demo** (password: `password123`):
    | Peran | Email |
    | ----- | ----- |
-   | Client | `client@rega.id` |
-   | Freelancer | `rani.desain@rega.id` |
-   | Admin | `admin@rega.id` |
+   | Client | `client@worq.id` |
+   | Freelancer | `rani.desain@worq.id` |
+   | Admin | `admin@worq.id` |
 4. Coba alurnya: cari jasa → buka detail → **Pesan** (mode simulasi langsung lunas) → buka **Pesanan Saya** → (login sebagai freelancer) kirim hasil → (kembali sebagai client) **Terima & Selesaikan** → beri ulasan.
 
 ---
@@ -82,7 +82,7 @@ Jika halaman 404 / kosong, kemungkinan Production Branch belum diset:
 
 - **Build error "Can't reach database"** → pastikan `DATABASE_URL` benar & **Pooled connection dimatikan** di Neon. Perbarui env var → **Redeploy**.
 - **Tidak bisa login / sesi error** → pastikan `AUTH_SECRET` sudah diisi (tidak boleh kosong).
-- **Repo tidak muncul di Vercel** → Vercel → **Settings → GitHub App permissions** → beri akses repo `Rega`.
+- **Repo tidak muncul di Vercel** → Vercel → **Settings → GitHub App permissions** → beri akses repo `Worq`.
 - **Mau pembayaran sungguhan (sandbox)** → tambahkan `MIDTRANS_SERVER_KEY` & `MIDTRANS_CLIENT_KEY` dari dashboard Midtrans, lalu Redeploy.
 
 Setiap kali ada update kode baru di-push ke branch ini, Vercel **otomatis deploy ulang**.

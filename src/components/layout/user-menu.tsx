@@ -10,6 +10,7 @@ import {
   ShieldCheck,
   Wallet,
   Heart,
+  FilePlus2,
 } from "lucide-react";
 import type { Role } from "@prisma/client";
 
@@ -65,6 +66,11 @@ export function UserMenu({ name, email, image, role }: Props) {
         <DropdownMenuItem asChild>
           <Link href="/wishlist">
             <Heart /> Favorit
+          </Link>
+        </DropdownMenuItem>
+        <DropdownMenuItem asChild>
+          <Link href="/jobs/new">
+            <FilePlus2 /> Posting Pekerjaan
           </Link>
         </DropdownMenuItem>
         {isFreelancer && (

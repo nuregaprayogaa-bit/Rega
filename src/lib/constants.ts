@@ -1,7 +1,7 @@
 // Konstanta & nilai default bisnis. Nilai runtime diambil dari AppConfig
 // (lihat src/server/services/config.ts) sehingga bisa diubah tanpa deploy.
 
-export const APP_NAME = process.env.NEXT_PUBLIC_APP_NAME ?? "Rega";
+export const APP_NAME = process.env.NEXT_PUBLIC_APP_NAME ?? "Worq";
 export const APP_TAGLINE = "Marketplace jasa freelance terpercaya di Indonesia";
 
 export const DEFAULTS = {

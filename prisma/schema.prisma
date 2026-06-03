@@ -1,4 +1,4 @@
-// Rega — Prisma schema
+// Worq — Prisma schema
 // Marketplace jasa freelance multi-vendor untuk pasar Indonesia (referensi: Fastwork).
 // Catatan uang: SEMUA nominal IDR disimpan sebagai INTEGER rupiah (tanpa desimal/float).
 
@@ -101,6 +101,8 @@ model User {
   disputesOpened    Dispute[]          @relation("DisputeOpener")
   notifications     Notification[]
   wishlist          Wishlist[]
+  jobsPosted        Job[]              @relation("JobClient")
+  jobProposals      JobProposal[]
 
   @@index([role])
 }
@@ -174,6 +176,7 @@ model Category {
   icon          String? // nama ikon lucide (opsional)
   subcategories Subcategory[]
   gigs          Gig[]
+  jobs          Job[]
 }
 
 model Subcategory {
@@ -480,6 +483,57 @@ model Wishlist {
 
   @@unique([userId, gigId])
   @@index([userId])
+}
+
+// ============================================================
+// PAPAN PEKERJAAN (Job board) — client posting kebutuhan, freelancer melamar
+// ============================================================
+
+enum JobStatus {
+  OPEN
+  CLOSED
+}
+
+enum ProposalStatus {
+  PENDING
+  ACCEPTED
+  REJECTED
+}
+
+model Job {
+  id           String     @id @default(cuid())
+  clientId     String
+  client       User       @relation("JobClient", fields: [clientId], references: [id], onDelete: Cascade)
+  title        String
+  description  String     @db.Text
+  categoryId   String?
+  category     Category?  @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  budgetMinIDR Int? // anggaran (rupiah, integer)
+  budgetMaxIDR Int?
+  status       JobStatus  @default(OPEN)
+  proposals    JobProposal[]
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+
+  @@index([status])
+  @@index([clientId])
+  @@index([categoryId])
+}
+
+model JobProposal {
+  id           String         @id @default(cuid())
+  jobId        String
+  job          Job            @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  freelancerId String
+  freelancer   User           @relation(fields: [freelancerId], references: [id], onDelete: Cascade)
+  message      String         @db.Text
+  priceIDR     Int
+  status       ProposalStatus @default(PENDING)
+  createdAt    DateTime       @default(now())
+
+  @@unique([jobId, freelancerId])
+  @@index([jobId])
+  @@index([freelancerId])
 }
 
 // ============================================================

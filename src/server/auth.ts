@@ -47,12 +47,13 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
   ],
   callbacks: {
     ...authConfig.callbacks,
-    async jwt({ token, user }) {
+    async jwt({ token, user, trigger }) {
       if (user) {
         // token.sub berisi user.id secara default.
         token.role = (user.role as Role) ?? Role.CLIENT;
-      } else if (!token.role && token.sub) {
-        // OAuth sign-in: ambil role dari DB jika belum ada di token.
+      } else if (token.sub && (trigger === "update" || !token.role)) {
+        // Ambil/segarkan role dari DB (OAuth sign-in, atau saat upgrade peran
+        // memanggil session.update() — mis. client menjadi freelancer).
         const dbUser = await db.user.findUnique({
           where: { id: token.sub },
           select: { role: true },

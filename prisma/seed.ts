@@ -57,7 +57,7 @@ type FreelancerSeed = {
 
 const FREELANCERS: FreelancerSeed[] = [
   {
-    email: "rani.desain@rega.id",
+    email: "rani.desain@worq.id",
     name: "Rani Wijaya",
     color: "6366f1",
     headline: "Desainer Logo & Brand Identity",
@@ -98,7 +98,7 @@ const FREELANCERS: FreelancerSeed[] = [
     ],
   },
   {
-    email: "dimas.dev@rega.id",
+    email: "dimas.dev@worq.id",
     name: "Dimas Pratama",
     color: "0ea5e9",
     headline: "Full-stack Web Developer",
@@ -138,7 +138,7 @@ const FREELANCERS: FreelancerSeed[] = [
     ],
   },
   {
-    email: "sari.tulis@rega.id",
+    email: "sari.tulis@worq.id",
     name: "Sari Lestari",
     color: "f59e0b",
     headline: "Penulis Konten & SEO Copywriter",
@@ -166,7 +166,7 @@ const FREELANCERS: FreelancerSeed[] = [
     ],
   },
   {
-    email: "agus.video@rega.id",
+    email: "agus.video@worq.id",
     name: "Agus Setiawan",
     color: "ef4444",
     headline: "Video Editor & Motion Graphics",
@@ -238,7 +238,7 @@ function packagesFor(base: number) {
 }
 
 async function main() {
-  console.log("🌱 Seeding Rega (marketplace jasa freelance)...");
+  console.log("🌱 Seeding Worq (marketplace jasa freelance)...");
 
   // --- Konfigurasi bisnis ---
   const config: Record<string, string> = {
@@ -264,13 +264,13 @@ async function main() {
   // --- Users dasar ---
   const passwordHash = await bcrypt.hash("password123", 10);
   const admin = await db.user.upsert({
-    where: { email: "admin@rega.id" },
-    create: { email: "admin@rega.id", name: "Admin Rega", role: Role.ADMIN, passwordHash, image: avatar("Admin Rega", "111827") },
+    where: { email: "admin@worq.id" },
+    create: { email: "admin@worq.id", name: "Admin Worq", role: Role.ADMIN, passwordHash, image: avatar("Admin Worq", "111827") },
     update: { role: Role.ADMIN },
   });
   const client = await db.user.upsert({
-    where: { email: "client@rega.id" },
-    create: { email: "client@rega.id", name: "Budi Santoso", role: Role.CLIENT, passwordHash, image: avatar("Budi Santoso", "16a34a") },
+    where: { email: "client@worq.id" },
+    create: { email: "client@worq.id", name: "Budi Santoso", role: Role.CLIENT, passwordHash, image: avatar("Budi Santoso", "16a34a") },
     update: {},
   });
   console.log("  ✓ Admin & Client (password: password123)");
@@ -365,7 +365,7 @@ async function main() {
         const commission = Math.round(price * 0.1);
         const order = await db.order.create({
           data: {
-            code: `RGA-${gig.slug.slice(0, 3).toUpperCase()}${i}${Math.random().toString(36).slice(2, 5).toUpperCase()}`,
+            code: `WRQ-${gig.slug.slice(0, 3).toUpperCase()}${i}${Math.random().toString(36).slice(2, 5).toUpperCase()}`,
             clientId: client.id,
             freelancerId: user.id,
             gigId: gig.id,
@@ -399,9 +399,9 @@ async function main() {
   }
 
   console.log("✅ Seed selesai. Akun demo (password: password123):");
-  console.log("   • admin@rega.id   (Admin)");
-  console.log("   • client@rega.id  (Client)");
-  console.log("   • rani.desain@rega.id / dimas.dev@rega.id / sari.tulis@rega.id / agus.video@rega.id (Freelancer)");
+  console.log("   • admin@worq.id   (Admin)");
+  console.log("   • client@worq.id  (Client)");
+  console.log("   • rani.desain@worq.id / dimas.dev@worq.id / sari.tulis@worq.id / agus.video@worq.id (Freelancer)");
   void admin;
 }
 

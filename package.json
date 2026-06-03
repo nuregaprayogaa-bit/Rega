@@ -1,8 +1,8 @@
 {
-  "name": "rega",
+  "name": "worq",
   "version": "0.1.0",
   "private": true,
-  "description": "Rega — Marketplace jasa freelance multi-vendor untuk pasar Indonesia",
+  "description": "Worq — Marketplace jasa freelance multi-vendor untuk pasar Indonesia",
   "scripts": {
     "dev": "next dev",
     "build": "prisma generate && next build",

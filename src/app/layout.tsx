@@ -8,7 +8,7 @@ import { Toaster } from "@/components/ui/sonner";
 import "./globals.css";
 
 // Plus Jakarta Sans — tipografi modern yang dirancang di Indonesia,
-// memberi karakter lokal & orisinal pada brand Rega.
+// memberi karakter lokal & orisinal pada brand Worq.
 const jakarta = Plus_Jakarta_Sans({
   subsets: ["latin"],
   variable: "--font-sans",
@@ -21,8 +21,8 @@ export const metadata: Metadata = {
     template: `%s — ${APP_NAME}`,
   },
   description:
-    "Rega adalah marketplace jasa freelance Indonesia. Pesan jasa desain, penulisan, video, web, dan banyak lagi dengan pembayaran aman (escrow). Harga Rupiah, pembayaran lokal (QRIS, VA, e-wallet).",
-  keywords: ["freelance", "jasa", "marketplace", "Indonesia", "Rega", "desain", "programmer"],
+    "Worq adalah marketplace jasa freelance Indonesia. Pesan jasa desain, penulisan, video, web, dan banyak lagi dengan pembayaran aman (escrow). Harga Rupiah, pembayaran lokal (QRIS, VA, e-wallet).",
+  keywords: ["freelance", "jasa", "marketplace", "Indonesia", "Worq", "desain", "programmer"],
 };
 
 export default async function RootLayout({

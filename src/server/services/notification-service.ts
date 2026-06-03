@@ -41,7 +41,7 @@ export async function notify(input: NotifyInput): Promise<void> {
           html: emailTemplate({
             heading: input.title,
             body: input.body ?? "",
-            ctaLabel: input.link ? "Buka di Rega" : undefined,
+            ctaLabel: input.link ? "Buka di Worq" : undefined,
             ctaUrl: input.link,
           }),
         });

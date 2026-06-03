@@ -60,7 +60,7 @@ export function canTransition(from: OrderStatus, to: OrderStatus): boolean {
 
 function generateOrderCode(): string {
   const rand = Math.random().toString(36).slice(2, 8).toUpperCase();
-  return `RGA-${rand}`;
+  return `WRQ-${rand}`;
 }
 
 export type CheckoutResult =
