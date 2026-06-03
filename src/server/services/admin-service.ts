@@ -3,9 +3,13 @@ import {
   OrderStatus,
   PayoutStatus,
   DisputeStatus,
+  GigStatus,
+  Role,
 } from "@prisma/client";
 
 import { db } from "@/server/db";
+import { slugify } from "@/lib/slug";
+import { ensureFreelancerSetup } from "@/server/services/auth-service";
 import {
   ledgerRelease,
   ledgerRefund,
@@ -139,4 +143,103 @@ export async function resolveDisputeRefund(orderId: string): Promise<{ ok: boole
     });
     return { ok: true };
   });
+}
+
+// ============================================================
+// MODERASI JASA (gig)
+// ============================================================
+
+export async function listAllGigs() {
+  return db.gig.findMany({
+    include: {
+      freelancer: { select: { id: true, name: true, email: true } },
+      category: { select: { name: true } },
+      packages: { orderBy: { priceIDR: "asc" }, take: 1 },
+    },
+    orderBy: { createdAt: "desc" },
+    take: 100,
+  });
+}
+
+export async function setGigStatusByAdmin(
+  gigId: string,
+  status: GigStatus,
+): Promise<{ ok: boolean }> {
+  const res = await db.gig.updateMany({ where: { id: gigId }, data: { status } });
+  return { ok: res.count > 0 };
+}
+
+// ============================================================
+// KELOLA KATEGORI
+// ============================================================
+
+export async function listCategoriesAdmin() {
+  return db.category.findMany({
+    include: { _count: { select: { gigs: true } } },
+    orderBy: { name: "asc" },
+  });
+}
+
+export async function createCategory(
+  name: string,
+  icon?: string,
+): Promise<{ ok: boolean; error?: string }> {
+  const clean = name.trim();
+  if (clean.length < 2) return { ok: false, error: "Nama kategori terlalu pendek." };
+  const slug = slugify(clean);
+  const existing = await db.category.findUnique({ where: { slug } });
+  if (existing) return { ok: false, error: "Kategori sudah ada." };
+  await db.category.create({ data: { name: clean, slug, icon: icon?.trim() || null } });
+  return { ok: true };
+}
+
+export async function renameCategory(
+  id: string,
+  name: string,
+): Promise<{ ok: boolean; error?: string }> {
+  const clean = name.trim();
+  if (clean.length < 2) return { ok: false, error: "Nama kategori terlalu pendek." };
+  await db.category.update({ where: { id }, data: { name: clean } });
+  return { ok: true };
+}
+
+export async function deleteCategory(id: string): Promise<{ ok: boolean; error?: string }> {
+  const count = await db.gig.count({ where: { categoryId: id } });
+  if (count > 0) {
+    return { ok: false, error: "Kategori masih dipakai oleh jasa. Pindahkan dulu." };
+  }
+  await db.category.delete({ where: { id } });
+  return { ok: true };
+}
+
+// ============================================================
+// MANAJEMEN USER
+// ============================================================
+
+export async function listAllUsers() {
+  return db.user.findMany({
+    select: {
+      id: true,
+      name: true,
+      email: true,
+      role: true,
+      image: true,
+      createdAt: true,
+      _count: { select: { gigs: true, ordersAsClient: true } },
+    },
+    orderBy: { createdAt: "desc" },
+    take: 200,
+  });
+}
+
+export async function setUserRole(
+  userId: string,
+  role: Role,
+): Promise<{ ok: boolean }> {
+  await db.user.update({ where: { id: userId }, data: { role } });
+  // Saat dijadikan freelancer, pastikan profil & dompet tersedia.
+  if (role === Role.FREELANCER || role === Role.ADMIN) {
+    await ensureFreelancerSetup(userId);
+  }
+  return { ok: true };
 }

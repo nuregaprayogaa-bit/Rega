@@ -1,26 +1,27 @@
 import Link from "next/link";
-import { LayoutDashboard, Package, ShoppingBag, Wallet, UserCog, BarChart3 } from "lucide-react";
+import { LayoutDashboard, Package, FolderTree, Users, ShieldCheck } from "lucide-react";
 
 import { requireRole } from "@/server/auth-helpers";
 import { Role } from "@prisma/client";
 
 const NAV = [
-  { href: "/sell", label: "Ringkasan", icon: LayoutDashboard },
-  { href: "/sell/gigs", label: "Jasa Saya", icon: Package },
-  { href: "/sell/orders", label: "Order Masuk", icon: ShoppingBag },
-  { href: "/sell/analytics", label: "Analytics", icon: BarChart3 },
-  { href: "/sell/wallet", label: "Dompet", icon: Wallet },
-  { href: "/sell/profile", label: "Profil", icon: UserCog },
+  { href: "/admin", label: "Ringkasan", icon: LayoutDashboard },
+  { href: "/admin/gigs", label: "Moderasi Jasa", icon: Package },
+  { href: "/admin/categories", label: "Kategori", icon: FolderTree },
+  { href: "/admin/users", label: "Pengguna", icon: Users },
 ];
 
-export default async function SellLayout({ children }: { children: React.ReactNode }) {
-  await requireRole([Role.FREELANCER, Role.ADMIN]);
+export default async function AdminLayout({ children }: { children: React.ReactNode }) {
+  await requireRole([Role.ADMIN]);
 
   return (
     <div className="container py-8">
+      <div className="mb-6 flex items-center gap-2">
+        <ShieldCheck className="h-6 w-6 text-primary" />
+        <h1 className="text-2xl font-bold">Panel Admin</h1>
+      </div>
       <div className="grid gap-8 lg:grid-cols-[200px_1fr]">
         <aside className="lg:sticky lg:top-20 lg:self-start">
-          {/* Nav horizontal di mobile, vertikal di desktop */}
           <nav className="flex gap-1 overflow-x-auto no-scrollbar lg:flex-col">
             {NAV.map((n) => (
               <Link

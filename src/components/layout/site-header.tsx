@@ -1,8 +1,7 @@
 import Link from "next/link";
-import { Sparkles } from "lucide-react";
 
 import { getCurrentUser } from "@/server/auth-helpers";
-import { APP_NAME } from "@/lib/constants";
+import { Logo } from "@/components/layout/logo";
 import { listNotifications, unreadCount } from "@/server/services/notification-service";
 import { Button } from "@/components/ui/button";
 import { SearchBar } from "@/components/layout/search-bar";
@@ -20,11 +19,8 @@ export async function SiteHeader() {
   return (
     <header className="sticky top-0 z-40 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80">
       <div className="container flex h-16 items-center gap-4">
-        <Link href="/" className="flex shrink-0 items-center gap-2 text-lg font-bold">
-          <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary text-primary-foreground">
-            <Sparkles className="h-5 w-5" />
-          </span>
-          <span className="hidden sm:inline">{APP_NAME}</span>
+        <Link href="/" className="shrink-0">
+          <Logo />
         </Link>
 
         <SearchBar className="mx-auto hidden w-full max-w-lg md:block" />

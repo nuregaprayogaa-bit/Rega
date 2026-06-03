@@ -24,6 +24,14 @@
 - **Wishlist/Favorit**: simpan jasa (ikon hati di kartu & detail), halaman `/wishlist`.
 - **Sistem revisi**, **wallet & penarikan dana**, **level/badge freelancer** — sudah aktif sejak Phase 1.
 
+### Phase 3 (✅ selesai)
+- **Panel admin lengkap**: ringkasan + **moderasi jasa** (aktif/jeda/tolak), **kelola kategori** (tambah/ubah/hapus), **manajemen pengguna** (ubah peran Client/Freelancer/Admin), plus moderasi payout & resolusi sengketa.
+- **Analytics freelancer**: total & tren pendapatan 6 bulan, order aktif/selesai, tingkat penyelesaian, rating, jasa terlaris.
+- **Pembayaran produksi**: tinggal set `MIDTRANS_IS_SANDBOX=false` + kunci produksi (adapter sudah siap).
+
+### Desain
+Identitas visual orisinal (bukan tiruan): palet **jade/teal + aksen coral & amber**, tipografi **Plus Jakarta Sans** (dirancang di Indonesia), logo & hero kustom.
+
 ### Integritas keuangan (non-negotiable)
 - Escrow: dana ditahan sampai order diterima/auto-accept.
 - Uang = **integer rupiah** (tanpa float).

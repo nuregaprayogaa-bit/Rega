@@ -1,17 +1,16 @@
 import Link from "next/link";
-import { Sparkles } from "lucide-react";
-import { APP_NAME } from "@/lib/constants";
+import { Logo } from "@/components/layout/logo";
 
 export default function AuthLayout({ children }: { children: React.ReactNode }) {
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center bg-muted/30 px-4 py-12">
-      <Link href="/" className="mb-8 flex items-center gap-2 text-xl font-bold">
-        <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary text-primary-foreground">
-          <Sparkles className="h-5 w-5" />
-        </span>
-        {APP_NAME}
+    <div className="relative flex min-h-screen flex-col items-center justify-center overflow-hidden bg-muted/40 px-4 py-12">
+      {/* Bercak dekoratif */}
+      <div className="blob absolute -left-20 -top-20 h-72 w-72 bg-primary/20" />
+      <div className="blob absolute -bottom-24 -right-16 h-72 w-72 bg-highlight/20" />
+      <Link href="/" className="z-10 mb-8">
+        <Logo markClassName="h-9 w-9 text-lg" className="text-xl" />
       </Link>
-      <div className="w-full max-w-md">{children}</div>
+      <div className="z-10 w-full max-w-md">{children}</div>
     </div>
   );
 }

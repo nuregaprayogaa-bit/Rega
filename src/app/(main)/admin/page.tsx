@@ -1,24 +1,18 @@
 import { Users, Briefcase, Package, ShoppingBag } from "lucide-react";
 
-import { requireRole } from "@/server/auth-helpers";
 import { getAdminOverview } from "@/server/services/admin-service";
-import { Role } from "@prisma/client";
 import { formatIDR } from "@/lib/money";
 import { formatDate } from "@/lib/format";
 import { PayoutButtons, DisputeButtons } from "@/components/admin/admin-buttons";
 
 export const dynamic = "force-dynamic";
 
-export default async function AdminPage() {
-  await requireRole([Role.ADMIN]);
+export default async function AdminOverviewPage() {
   const data = await getAdminOverview();
 
   return (
-    <div className="container max-w-5xl py-8">
-      <h1 className="text-2xl font-bold">Panel Admin</h1>
-      <p className="text-sm text-muted-foreground">Moderasi platform Rega</p>
-
-      <div className="mt-6 grid grid-cols-2 gap-4 sm:grid-cols-4">
+    <div>
+      <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
         <Stat icon={Users} label="Total user" value={data.users} />
         <Stat icon={Briefcase} label="Freelancer" value={data.freelancers} />
         <Stat icon={Package} label="Jasa" value={data.gigs} />
@@ -65,7 +59,7 @@ export default async function AdminPage() {
                   <div>
                     <p className="font-semibold">{d.order.gig.title}</p>
                     <p className="text-xs text-muted-foreground">
-                      Order #{d.order.code} · diajukan oleh {d.openedBy.name}
+                      Order #{d.order.code} · diadukan oleh {d.openedBy.name}
                     </p>
                   </div>
                   <DisputeButtons orderId={d.order.id} />
