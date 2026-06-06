@@ -12,9 +12,11 @@ import { formatDate, initials } from "@/lib/format";
 import { PACKAGE_TIER_LABEL, PACKAGE_TIERS } from "@/lib/constants";
 import { Stars, RatingSummary } from "@/components/ui/stars";
 import { LevelBadge } from "@/components/ui/level-badge";
+import { Button } from "@/components/ui/button";
 import { GigGallery } from "@/components/gig/gig-gallery";
 import { PackagePanel, type PanelPackage } from "@/components/gig/package-panel";
 import { WishlistButton } from "@/components/gig/wishlist-button";
+import { ChatButton } from "@/components/messages/chat-button";
 import { isWishlisted } from "@/server/services/wishlist-service";
 
 export const dynamic = "force-dynamic";
@@ -64,8 +66,10 @@ export default async function GigDetailPage({
   const canOrder = !isOwner;
   const wished = user ? await isWishlisted(user.id, gig.id) : false;
 
+  const startingPrice = gig.packages[0]?.priceIDR ?? 0;
+
   return (
-    <div className="container py-8">
+    <div className="container py-8 pb-24 md:pb-8">
       {/* Breadcrumb */}
       <nav className="mb-4 text-sm text-muted-foreground">
         <Link href="/search" className="hover:text-primary">Jasa</Link>
@@ -210,8 +214,8 @@ export default async function GigDetailPage({
         </div>
 
         {/* Panel paket (sticky) */}
-        <aside>
-          <div className="sticky top-20">
+        <aside id="paket">
+          <div className="sticky top-20 space-y-3">
             <PackagePanel
               gigId={gig.id}
               packages={panelPackages}
@@ -219,8 +223,25 @@ export default async function GigDetailPage({
               canOrder={canOrder}
               isLoggedIn={!!user}
             />
+            {!isOwner && (
+              <ChatButton otherUserId={gig.freelancer.id} className="w-full" label="Chat freelancer dulu" />
+            )}
           </div>
         </aside>
+      </div>
+
+      {/* Bar pesan melekat di bawah (khusus mobile) */}
+      <div className="fixed inset-x-0 bottom-0 z-30 flex items-center gap-3 border-t bg-background/95 p-3 backdrop-blur md:hidden">
+        <div className="min-w-0">
+          <p className="text-[10px] text-muted-foreground">Mulai dari</p>
+          <p className="font-bold leading-none">{formatIDR(startingPrice)}</p>
+        </div>
+        {!isOwner && (
+          <ChatButton otherUserId={gig.freelancer.id} className="ml-auto" label="Chat" />
+        )}
+        <Button asChild className={isOwner ? "ml-auto" : ""}>
+          <a href="#paket">Lihat paket</a>
+        </Button>
       </div>
     </div>
   );

@@ -4,6 +4,8 @@ import type { Metadata } from "next";
 import { MapPin, CheckCircle2 } from "lucide-react";
 
 import { getPublicFreelancer } from "@/server/services/profile-service";
+import { getCurrentUser } from "@/server/auth-helpers";
+import { ChatButton } from "@/components/messages/chat-button";
 import { formatDate, initials } from "@/lib/format";
 import { Stars, RatingSummary } from "@/components/ui/stars";
 import { LevelBadge } from "@/components/ui/level-badge";
@@ -37,6 +39,8 @@ export default async function FreelancerPage({
 
   const { user, reviews } = data;
   const profile = user.freelancerProfile;
+  const me = await getCurrentUser();
+  const isSelf = me?.id === user.id;
 
   const gigCards: GigCardData[] = user.gigs.map((g) => ({
     id: g.id,
@@ -65,6 +69,9 @@ export default async function FreelancerPage({
               </span>
             )}
           </div>
+          {!isSelf && (
+            <ChatButton otherUserId={user.id} className="shrink-0 sm:order-last" label="Kirim pesan" />
+          )}
           <div className="min-w-0 flex-1">
             <div className="flex flex-wrap items-center justify-center gap-2 sm:justify-start">
               <h1 className="text-2xl font-bold">{user.name}</h1>

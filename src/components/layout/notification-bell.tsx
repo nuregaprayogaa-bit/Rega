@@ -45,8 +45,9 @@ export function NotificationBell({
     }
   }, []);
 
-  // Polling near-real-time + saat tab kembali fokus.
+  // Ambil saat dimuat + polling near-real-time + saat tab kembali fokus.
   useEffect(() => {
+    refresh();
     const id = setInterval(refresh, 25000);
     const onFocus = () => refresh();
     window.addEventListener("focus", onFocus);

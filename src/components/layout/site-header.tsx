@@ -1,7 +1,6 @@
 import Link from "next/link";
 
 import { getCurrentUser } from "@/server/auth-helpers";
-import { listNotifications, unreadCount } from "@/server/services/notification-service";
 import { Logo } from "@/components/layout/logo";
 import { Button } from "@/components/ui/button";
 import { SearchBar } from "@/components/layout/search-bar";
@@ -14,10 +13,6 @@ export async function SiteHeader() {
   const user = await getCurrentUser();
   const isFreelancer = user?.role === "FREELANCER" || user?.role === "ADMIN";
   const isClient = user?.role === "CLIENT";
-
-  const [notifItems, notifUnread] = user
-    ? await Promise.all([listNotifications(user.id, 15), unreadCount(user.id)])
-    : [[], 0];
 
   return (
     <header className="sticky top-0 z-40 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80">
@@ -66,10 +61,7 @@ export async function SiteHeader() {
         <div className="ml-auto flex shrink-0 items-center gap-1 md:ml-0">
           {user ? (
             <>
-              <NotificationBell
-                initialItems={JSON.parse(JSON.stringify(notifItems))}
-                initialUnread={notifUnread}
-              />
+              <NotificationBell initialItems={[]} initialUnread={0} />
               <UserMenu
                 name={user.name ?? null}
                 email={user.email ?? null}

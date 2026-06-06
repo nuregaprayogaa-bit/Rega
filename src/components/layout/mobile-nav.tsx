@@ -14,6 +14,7 @@ import {
   Heart,
   Store,
   LogOut,
+  MessageCircle,
 } from "lucide-react";
 
 import {
@@ -91,6 +92,9 @@ export function MobileNav({
           <>
             <Link href="/dashboard" className={item} onClick={close}>
               <LayoutDashboard className="h-4 w-4 text-muted-foreground" /> Dasbor
+            </Link>
+            <Link href="/messages" className={item} onClick={close}>
+              <MessageCircle className="h-4 w-4 text-muted-foreground" /> Pesan
             </Link>
             <Link href="/orders" className={item} onClick={close}>
               <ShoppingBag className="h-4 w-4 text-muted-foreground" /> Pesanan Saya

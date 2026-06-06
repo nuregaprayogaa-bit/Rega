@@ -11,6 +11,7 @@ import {
   Wallet,
   Heart,
   FilePlus2,
+  MessageCircle,
 } from "lucide-react";
 import type { Role } from "@prisma/client";
 
@@ -56,6 +57,11 @@ export function UserMenu({ name, email, image, role }: Props) {
         <DropdownMenuItem asChild>
           <Link href="/dashboard">
             <LayoutDashboard /> Dasbor
+          </Link>
+        </DropdownMenuItem>
+        <DropdownMenuItem asChild>
+          <Link href="/messages">
+            <MessageCircle /> Pesan
           </Link>
         </DropdownMenuItem>
         <DropdownMenuItem asChild>
