@@ -106,6 +106,7 @@ model User {
   threadsAsU1       MessageThread[]    @relation("ThreadUser1")
   threadsAsU2       MessageThread[]    @relation("ThreadUser2")
   threadMessages    ThreadMessage[]
+  payoutAccount     PayoutAccount?
 
   @@index([role])
 }
@@ -216,9 +217,9 @@ model Gig {
   ratingCount Int   @default(0)
   ordersCount Int   @default(0)
 
-  packages    ServicePackage[]
-  orders      Order[]
-  reviews     Review[]
+  packages     ServicePackage[]
+  orders       Order[]
+  reviews      Review[]
   wishlistedBy Wishlist[]
 
   createdAt DateTime @default(now())
@@ -273,9 +274,9 @@ model Order {
   commissionIDR    Int // komisi platform dari freelancer
   freelancerNetIDR Int // packagePrice - commission = earning bersih freelancer
 
-  requirements    String? @db.Text // brief/kebutuhan dari client
-  revisionsAllowed Int    @default(0)
-  revisionsUsed    Int    @default(0)
+  requirements     String? @db.Text // brief/kebutuhan dari client
+  revisionsAllowed Int     @default(0)
+  revisionsUsed    Int     @default(0)
 
   // Pembayaran (Midtrans)
   paymentRef    String?
@@ -355,18 +356,18 @@ model Message {
 // ============================================================
 
 model Review {
-  id             String   @id @default(cuid())
-  orderId        String   @unique
-  order          Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
-  gigId          String
-  gig            Gig      @relation(fields: [gigId], references: [id], onDelete: Cascade)
-  freelancerId   String
-  clientId       String
-  client         User     @relation("ReviewAuthor", fields: [clientId], references: [id], onDelete: Cascade)
-  rating         Int // 1-5
-  comment        String?  @db.Text
-  freelancerReply String? @db.Text
-  createdAt      DateTime @default(now())
+  id              String   @id @default(cuid())
+  orderId         String   @unique
+  order           Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  gigId           String
+  gig             Gig      @relation(fields: [gigId], references: [id], onDelete: Cascade)
+  freelancerId    String
+  clientId        String
+  client          User     @relation("ReviewAuthor", fields: [clientId], references: [id], onDelete: Cascade)
+  rating          Int // 1-5
+  comment         String?  @db.Text
+  freelancerReply String?  @db.Text
+  createdAt       DateTime @default(now())
 
   @@index([gigId])
   @@index([freelancerId])
@@ -408,6 +409,24 @@ model LedgerEntry {
   @@index([orderId])
 }
 
+enum PayoutAccountType {
+  BANK
+  EWALLET
+}
+
+// Rekening/e-wallet tersimpan milik freelancer untuk menerima penarikan dana.
+model PayoutAccount {
+  id          String            @id @default(cuid())
+  userId      String            @unique
+  user        User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type        PayoutAccountType @default(BANK)
+  provider    String // mis. "BCA", "Mandiri", "GoPay", "OVO", "DANA"
+  accountName String // nama pemilik rekening
+  accountNo   String // nomor rekening / nomor e-wallet
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
+}
+
 model PayoutRequest {
   id          String        @id @default(cuid())
   walletId    String
@@ -416,6 +435,7 @@ model PayoutRequest {
   user        User          @relation(fields: [userId], references: [id], onDelete: Cascade)
   amountIDR   Int
   status      PayoutStatus  @default(PENDING)
+  // Snapshot tujuan penarikan saat diajukan (disalin dari PayoutAccount).
   bankName    String?
   accountName String?
   accountNo   String?
@@ -504,19 +524,19 @@ enum ProposalStatus {
 }
 
 model Job {
-  id           String     @id @default(cuid())
+  id           String        @id @default(cuid())
   clientId     String
-  client       User       @relation("JobClient", fields: [clientId], references: [id], onDelete: Cascade)
+  client       User          @relation("JobClient", fields: [clientId], references: [id], onDelete: Cascade)
   title        String
-  description  String     @db.Text
+  description  String        @db.Text
   categoryId   String?
-  category     Category?  @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  category     Category?     @relation(fields: [categoryId], references: [id], onDelete: SetNull)
   budgetMinIDR Int? // anggaran (rupiah, integer)
   budgetMaxIDR Int?
-  status       JobStatus  @default(OPEN)
+  status       JobStatus     @default(OPEN)
   proposals    JobProposal[]
-  createdAt    DateTime   @default(now())
-  updatedAt    DateTime   @updatedAt
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
 
   @@index([status])
   @@index([clientId])

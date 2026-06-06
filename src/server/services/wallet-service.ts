@@ -1,10 +1,37 @@
 import "server-only";
-import { PayoutStatus } from "@prisma/client";
+import { PayoutStatus, type PayoutAccountType } from "@prisma/client";
 
 import { db } from "@/server/db";
 import { getMinPayoutIDR } from "@/server/services/config";
 import { ledgerPayout } from "@/server/services/ledger-service";
-import { payoutSchema, type PayoutInput } from "@/lib/validations/profile";
+import {
+  payoutSchema,
+  payoutAccountSchema,
+  type PayoutInput,
+  type PayoutAccountInput,
+} from "@/lib/validations/profile";
+
+/** Rekening/e-wallet penarikan tersimpan milik freelancer. */
+export async function getPayoutAccount(userId: string) {
+  return db.payoutAccount.findUnique({ where: { userId } });
+}
+
+export async function savePayoutAccount(
+  userId: string,
+  input: PayoutAccountInput,
+): Promise<{ ok: boolean; error?: string }> {
+  const parsed = payoutAccountSchema.safeParse(input);
+  if (!parsed.success) {
+    return { ok: false, error: parsed.error.issues[0]?.message ?? "Data tidak valid" };
+  }
+  const { type, provider, accountName, accountNo } = parsed.data;
+  await db.payoutAccount.upsert({
+    where: { userId },
+    create: { userId, type: type as PayoutAccountType, provider, accountName, accountNo },
+    update: { type: type as PayoutAccountType, provider, accountName, accountNo },
+  });
+  return { ok: true };
+}
 
 export async function getWallet(userId: string) {
   return db.walletAccount.upsert({
@@ -44,9 +71,15 @@ export async function requestPayout(
     return { ok: false, error: parsed.error.issues[0]?.message ?? "Data tidak valid" };
   }
   const min = await getMinPayoutIDR();
-  const { amountIDR, bankName, accountName, accountNo } = parsed.data;
+  const { amountIDR } = parsed.data;
   if (amountIDR < min) {
     return { ok: false, error: `Minimal penarikan Rp ${min.toLocaleString("id-ID")}.` };
+  }
+
+  // Wajib ada rekening tersimpan dulu.
+  const account = await db.payoutAccount.findUnique({ where: { userId } });
+  if (!account) {
+    return { ok: false, error: "Tambahkan rekening/e-wallet penarikan dulu." };
   }
 
   return db.$transaction(async (tx) => {
@@ -59,9 +92,10 @@ export async function requestPayout(
         walletId: wallet.id,
         userId,
         amountIDR,
-        bankName,
-        accountName,
-        accountNo,
+        // Snapshot tujuan dari rekening tersimpan.
+        bankName: account.provider,
+        accountName: account.accountName,
+        accountNo: account.accountNo,
         status: PayoutStatus.PENDING,
       },
       select: { id: true },

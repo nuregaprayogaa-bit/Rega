@@ -1,12 +1,18 @@
 import { Wallet, Clock, ArrowDownToLine, ArrowUpRight } from "lucide-react";
 
 import { requireRole } from "@/server/auth-helpers";
-import { getWallet, listEarnings, listPayouts } from "@/server/services/wallet-service";
+import {
+  getWallet,
+  listEarnings,
+  listPayouts,
+  getPayoutAccount,
+} from "@/server/services/wallet-service";
 import { getMinPayoutIDR } from "@/server/services/config";
 import { Role } from "@prisma/client";
 import { formatIDR } from "@/lib/money";
 import { formatDate } from "@/lib/format";
 import { PayoutForm } from "@/components/sell/payout-form";
+import { PayoutAccountForm } from "@/components/sell/payout-account-form";
 
 export const dynamic = "force-dynamic";
 
@@ -19,12 +25,16 @@ const PAYOUT_STATUS: Record<string, string> = {
 
 export default async function WalletPage() {
   const user = await requireRole([Role.FREELANCER, Role.ADMIN]);
-  const [wallet, earnings, payouts, minPayout] = await Promise.all([
+  const [wallet, earnings, payouts, minPayout, account] = await Promise.all([
     getWallet(user.id),
     listEarnings(user.id),
     listPayouts(user.id),
     getMinPayoutIDR(),
+    getPayoutAccount(user.id),
   ]);
+  const accountLabel = account
+    ? `${account.provider} ${account.accountNo} (${account.accountName})`
+    : undefined;
 
   return (
     <div>
@@ -106,8 +116,16 @@ export default async function WalletPage() {
           )}
         </div>
 
-        {/* Form tarik dana */}
-        <PayoutForm available={wallet.availableIDR} minPayout={minPayout} />
+        {/* Rekening penarikan + form tarik dana */}
+        <div className="space-y-6">
+          <PayoutAccountForm initial={account ? { type: account.type, provider: account.provider, accountName: account.accountName, accountNo: account.accountNo } : null} />
+          <PayoutForm
+            available={wallet.availableIDR}
+            minPayout={minPayout}
+            hasAccount={!!account}
+            accountLabel={accountLabel}
+          />
+        </div>
       </div>
     </div>
   );
