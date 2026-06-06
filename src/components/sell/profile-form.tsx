@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { ImageUpload } from "@/components/ui/image-upload";
 import { updateProfileAction } from "@/app/(main)/sell/profile/actions";
 
 export function ProfileForm({
@@ -67,8 +68,8 @@ export function ProfileForm({
         <Input id="name" value={name} onChange={(e) => setName(e.target.value)} required />
       </div>
       <div className="space-y-2">
-        <Label htmlFor="image">URL foto profil</Label>
-        <Input id="image" value={image} onChange={(e) => setImage(e.target.value)} placeholder="https://..." />
+        <Label>Foto profil</Label>
+        <ImageUpload value={image} onChange={setImage} aspect="aspect-square" className="max-w-[180px]" />
       </div>
       <div className="space-y-2">
         <Label htmlFor="headline">Headline</Label>

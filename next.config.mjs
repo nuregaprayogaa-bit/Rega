@@ -6,16 +6,10 @@ const withNextIntl = createNextIntlPlugin("./src/i18n/request.ts");
 const nextConfig = {
   reactStrictMode: true,
   images: {
-    remotePatterns: [
-      // S3 / R2 public bucket atau CDN domain (sesuaikan di env produksi)
-      { protocol: "https", hostname: "**.r2.dev" },
-      { protocol: "https", hostname: "**.r2.cloudflarestorage.com" },
-      { protocol: "https", hostname: "**.amazonaws.com" },
-      { protocol: "https", hostname: "picsum.photos" },
-      { protocol: "https", hostname: "images.unsplash.com" },
-      { protocol: "https", hostname: "ui-avatars.com" },
-      { protocol: "https", hostname: "localhost" },
-    ],
+    // Izinkan gambar dari host HTTPS mana pun — pengguna bisa menempel URL gambar
+    // dari berbagai sumber (portfolio, Drive, CDN, dll). next/image tetap
+    // mengoptimasi & memproksi gambar, jadi aman untuk marketplace.
+    remotePatterns: [{ protocol: "https", hostname: "**" }],
   },
   serverExternalPackages: ["sharp", "@aws-sdk/client-s3"],
   poweredByHeader: false,

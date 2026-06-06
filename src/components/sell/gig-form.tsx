@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { ImageUpload } from "@/components/ui/image-upload";
 import { PACKAGE_TIERS, PACKAGE_TIER_LABEL, type PackageTierKey } from "@/lib/constants";
 import { createGigAction, updateGigAction } from "@/app/(main)/sell/gigs/actions";
 import type { GigInput } from "@/lib/validations/gig";
@@ -174,19 +175,14 @@ export function GigForm({
       <section className="space-y-4 rounded-xl border bg-card p-5">
         <h2 className="font-semibold">Gambar</h2>
         <div className="space-y-2">
-          <Label htmlFor="cover">URL gambar sampul</Label>
-          <Input
-            id="cover"
-            value={coverImage}
-            onChange={(e) => setCoverImage(e.target.value)}
-            placeholder="https://..."
-          />
+          <Label>Gambar sampul</Label>
+          <ImageUpload value={coverImage} onChange={setCoverImage} />
           <p className="text-xs text-muted-foreground">
-            Tempel URL gambar (mis. dari Unsplash). Upload file otomatis aktif jika storage dikonfigurasi.
+            Gambar utama jasamu. Boleh dikosongkan (akan pakai placeholder).
           </p>
         </div>
         <div className="space-y-2">
-          <Label htmlFor="gallery">URL galeri (satu per baris)</Label>
+          <Label htmlFor="gallery">URL galeri tambahan (satu per baris, opsional)</Label>
           <Textarea
             id="gallery"
             value={gallery}
