@@ -15,13 +15,13 @@ import {
 export function PayoutButtons({ id }: { id: string }) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
-  const run = (fn: () => Promise<{ ok: boolean }>, msg: string) =>
+  const run = (fn: () => Promise<{ ok: boolean; error?: string }>, msg: string) =>
     startTransition(async () => {
       const res = await fn();
       if (res.ok) {
         toast.success(msg);
         router.refresh();
-      } else toast.error("Gagal memproses.");
+      } else toast.error(res.error ?? "Gagal memproses.");
     });
 
   return (

@@ -18,6 +18,11 @@ import {
 import { recomputeFreelancerStats } from "@/server/services/profile-service";
 import { notify } from "@/server/services/notification-service";
 import { NotificationType } from "@prisma/client";
+import {
+  isDisbursementConfigured,
+  getDisbursementProvider,
+  bankCodeFor,
+} from "@/server/adapters/disbursement";
 
 export async function getAdminOverview() {
   const [users, freelancers, gigs, orders, pendingPayouts, openDisputes] =
@@ -44,24 +49,62 @@ export async function getAdminOverview() {
   return { users, freelancers, gigs, orders, pendingPayouts, openDisputes };
 }
 
-/** Setujui payout (dana sudah dipotong saat diajukan). */
-export async function approvePayout(payoutId: string): Promise<{ ok: boolean }> {
-  const payout = await db.payoutRequest.findUnique({ where: { id: payoutId } });
-  const res = await db.payoutRequest.updateMany({
+/**
+ * Setujui payout (dana sudah dipotong saat diajukan).
+ * Jika disbursement otomatis (Xendit) dikonfigurasi & bank didukung, dana
+ * langsung ditransfer ke rekening freelancer. Jika tidak, ditandai PAID
+ * (admin transfer manual) — sama seperti sebelumnya.
+ */
+export async function approvePayout(
+  payoutId: string,
+): Promise<{ ok: boolean; error?: string }> {
+  const payout = await db.payoutRequest.findFirst({
     where: { id: payoutId, status: PayoutStatus.PENDING },
-    data: { status: PayoutStatus.PAID, processedAt: new Date() },
   });
-  if (res.count > 0 && payout) {
-    await notify({
-      userId: payout.userId,
-      type: NotificationType.PAYOUT,
-      title: "Penarikan dana disetujui ✅",
-      body: "Permintaan penarikan danamu telah diproses dan dibayarkan.",
-      link: "/sell/wallet",
-      email: true,
-    });
+  if (!payout) return { ok: false, error: "Payout tidak ditemukan atau sudah diproses." };
+
+  let reference: string | undefined;
+
+  // Coba transfer otomatis bila dikonfigurasi & bank didukung.
+  if (isDisbursementConfigured()) {
+    const bankCode = bankCodeFor(payout.bankName ?? "");
+    if (bankCode) {
+      const result = await getDisbursementProvider().disburse({
+        externalId: `payout_${payout.id}`,
+        amount: payout.amountIDR,
+        bankCode,
+        accountHolderName: payout.accountName ?? "",
+        accountNumber: payout.accountNo ?? "",
+        description: `Worq payout ${payout.id}`,
+      });
+      if (!result.ok) {
+        return { ok: false, error: `Transfer otomatis gagal: ${result.error}` };
+      }
+      reference = result.reference;
+    }
+    // bankCode null (mis. e-wallet): lanjut sebagai manual (admin proses sendiri).
   }
-  return { ok: res.count > 0 };
+
+  await db.payoutRequest.update({
+    where: { id: payoutId },
+    data: {
+      status: PayoutStatus.PAID,
+      processedAt: new Date(),
+      note: reference ? `Auto-transfer: ${reference}` : payout.note,
+    },
+  });
+
+  await notify({
+    userId: payout.userId,
+    type: NotificationType.PAYOUT,
+    title: "Penarikan dana disetujui ✅",
+    body: reference
+      ? "Dana sudah ditransfer otomatis ke rekeningmu."
+      : "Permintaan penarikan danamu telah diproses dan dibayarkan.",
+    link: "/sell/wallet",
+    email: true,
+  });
+  return { ok: true };
 }
 
 /** Tolak payout: kembalikan saldo ke dompet (+ entri reversal). */

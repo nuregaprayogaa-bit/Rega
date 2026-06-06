@@ -2,9 +2,18 @@
 
 import { AuthError } from "next-auth";
 import { signIn } from "@/server/auth";
-import { registerUser } from "@/server/services/auth-service";
+import {
+  registerUser,
+  requestPasswordReset,
+  resetPassword,
+} from "@/server/services/auth-service";
 import { limitByIp } from "@/lib/rate-limit";
-import type { LoginInput, RegisterInput } from "@/lib/validations/auth";
+import type {
+  LoginInput,
+  RegisterInput,
+  ForgotPasswordInput,
+  ResetPasswordInput,
+} from "@/lib/validations/auth";
 
 export type ActionState = { error?: string; success?: boolean };
 
@@ -46,4 +55,23 @@ export async function registerAction(
     return { error: result.error };
   }
   return { success: true };
+}
+
+export async function forgotPasswordAction(
+  input: ForgotPasswordInput,
+): Promise<ActionState> {
+  const limited = await limitByIp("forgot", 5, 60_000);
+  if (limited) return { error: limited };
+  await requestPasswordReset(input);
+  // Selalu sukses (anti-enumerasi).
+  return { success: true };
+}
+
+export async function resetPasswordAction(
+  input: ResetPasswordInput,
+): Promise<ActionState> {
+  const limited = await limitByIp("reset", 10, 60_000);
+  if (limited) return { error: limited };
+  const res = await resetPassword(input);
+  return res.ok ? { success: true } : { error: res.error };
 }
