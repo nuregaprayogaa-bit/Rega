@@ -28,9 +28,6 @@ export async function SiteHeader() {
           <Button variant="ghost" size="sm" asChild className="hidden lg:inline-flex">
             <Link href="/search">Jelajahi Jasa</Link>
           </Button>
-          <Button variant="ghost" size="sm" asChild className="hidden lg:inline-flex">
-            <Link href="/jobs">Cari Pekerjaan</Link>
-          </Button>
           {user && (
             <Button variant="ghost" size="sm" asChild>
               <Link href="/jobs/new">Posting Pekerjaan</Link>

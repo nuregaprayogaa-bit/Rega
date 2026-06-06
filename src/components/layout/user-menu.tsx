@@ -1,7 +1,7 @@
 "use client";
 
-import Link from "next/link";
 import { useTransition } from "react";
+import { useRouter } from "next/navigation";
 import {
   LogOut,
   LayoutDashboard,
@@ -34,9 +34,17 @@ type Props = {
 };
 
 export function UserMenu({ name, email, image, role }: Props) {
+  const router = useRouter();
   const [, startTransition] = useTransition();
   const initials = (name ?? email ?? "U").slice(0, 2).toUpperCase();
   const isFreelancer = role === "FREELANCER" || role === "ADMIN";
+
+  // Navigasi programatik: lebih andal di perangkat sentuh (HP) daripada
+  // Link di dalam item dropdown Radix.
+  const go = (href: string) => (e: Event) => {
+    e.preventDefault();
+    router.push(href);
+  };
 
   return (
     <DropdownMenu>
@@ -54,51 +62,35 @@ export function UserMenu({ name, email, image, role }: Props) {
           </div>
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
-        <DropdownMenuItem asChild>
-          <Link href="/dashboard">
-            <LayoutDashboard /> Dasbor
-          </Link>
+        <DropdownMenuItem onSelect={go("/dashboard")}>
+          <LayoutDashboard /> Dasbor
         </DropdownMenuItem>
-        <DropdownMenuItem asChild>
-          <Link href="/messages">
-            <MessageCircle /> Pesan
-          </Link>
+        <DropdownMenuItem onSelect={go("/messages")}>
+          <MessageCircle /> Pesan
         </DropdownMenuItem>
-        <DropdownMenuItem asChild>
-          <Link href="/orders">
-            <ShoppingBag /> Pesanan Saya
-          </Link>
+        <DropdownMenuItem onSelect={go("/orders")}>
+          <ShoppingBag /> Pesanan Saya
         </DropdownMenuItem>
-        <DropdownMenuItem asChild>
-          <Link href="/wishlist">
-            <Heart /> Favorit
-          </Link>
+        <DropdownMenuItem onSelect={go("/wishlist")}>
+          <Heart /> Favorit
         </DropdownMenuItem>
-        <DropdownMenuItem asChild>
-          <Link href="/jobs/new">
-            <FilePlus2 /> Posting Pekerjaan
-          </Link>
+        <DropdownMenuItem onSelect={go("/jobs/new")}>
+          <FilePlus2 /> Posting Pekerjaan
         </DropdownMenuItem>
         {isFreelancer && (
           <>
             <DropdownMenuSeparator />
-            <DropdownMenuItem asChild>
-              <Link href="/sell">
-                <Store /> Kelola Jasa
-              </Link>
+            <DropdownMenuItem onSelect={go("/sell")}>
+              <Store /> Kelola Jasa
             </DropdownMenuItem>
-            <DropdownMenuItem asChild>
-              <Link href="/sell/wallet">
-                <Wallet /> Dompet
-              </Link>
+            <DropdownMenuItem onSelect={go("/sell/wallet")}>
+              <Wallet /> Dompet
             </DropdownMenuItem>
           </>
         )}
         {role === "ADMIN" && (
-          <DropdownMenuItem asChild>
-            <Link href="/admin">
-              <ShieldCheck /> Panel Admin
-            </Link>
+          <DropdownMenuItem onSelect={go("/admin")}>
+            <ShieldCheck /> Panel Admin
           </DropdownMenuItem>
         )}
         <DropdownMenuSeparator />

@@ -26,9 +26,21 @@ export const authConfig = {
   },
   providers: [], // providers asli didaftarkan di src/server/auth.ts (runtime Node)
   callbacks: {
+    // PENTING: di middleware (Edge), `auth.user` hanya berisi field default.
+    // Tanpa session callback ini, `auth.user.role` undefined -> guard /dashboard
+    // gagal dan menyebabkan REDIRECT LOOP. Callback ini Edge-safe (tanpa DB):
+    // hanya menyalin role & id dari token JWT yang sudah dibuat saat login.
+    session({ session, token }) {
+      if (session.user) {
+        session.user.id = String(token.sub ?? "");
+        const role = token.role as unknown as RoleName | undefined;
+        if (role) (session.user as { role: RoleName }).role = role;
+      }
+      return session;
+    },
     // Proteksi route berbasis peran. Dijalankan di middleware (Edge).
     authorized({ auth, request: { nextUrl } }) {
-      const role = auth?.user?.role;
+      const role = auth?.user?.role as RoleName | undefined;
       const isLoggedIn = !!auth?.user;
       const { pathname } = nextUrl;
 
@@ -42,11 +54,14 @@ export const authConfig = {
         return Response.redirect(loginUrl);
       }
 
+      // Login & peran cocok -> izinkan. (Jika role belum termuat, jangan
+      // memblokir route untuk semua peran agar tidak terjadi redirect loop.)
       if (role && guard.roles.includes(role)) return true;
+      if (!role && guard.roles.length === 3) return true; // route untuk semua peran
 
       // Login tapi peran tidak sesuai -> ke dashboard sendiri.
+      if (pathname.startsWith("/dashboard")) return true; // jangan loop ke diri sendiri
       return Response.redirect(new URL("/dashboard", nextUrl));
     },
-    // jwt & session callback dipindah ke auth.ts (butuh tipe lengkap).
   },
 } satisfies NextAuthConfig;
